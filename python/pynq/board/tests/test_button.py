@@ -34,7 +34,10 @@ __email__       = "pynq_support@xilinx.com"
 
 import pytest
 from pynq.board import Button
+from pynq.tests.play_record import play_record
 
+@play_record('test_btn_all.trace', 'builtins.input', 'pynq.board.button.MMIO',
+             'pynq.board.button.PL','builtins.print')
 @pytest.mark.run(order=9)
 def test_btn_all():
     """Test for the Button class and its wrapper functions.

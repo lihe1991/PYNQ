@@ -35,12 +35,17 @@ __email__       = "pynq_support@xilinx.com"
 import sys
 import select
 import termios
-from time import sleep
+import time
 import pytest
 from pynq.board import RGBLED
 from pynq.tests.util import user_answer_yes
+from pynq.tests.play_record import play_record
+import pynq.tests.util
 
 @pytest.mark.run(order=7)
+@play_record('test_rgbleds.trace','builtins.input','pynq.board.rgbled.MMIO',
+             'pynq.board.rgbled.PL','pynq.tests.util.waiting_user_input',
+             'time.sleep','builtins.print')
 def test_rgbleds():
     """Test for the RGBLED class and its wrapper functions.
     
@@ -61,8 +66,8 @@ def test_rgbleds():
         for rgbled in rgbleds:
             rgbled.write(color)
             assert rgbled.read()==color, 'Wrong state for RGBLED.'
-        sleep(0.5)
-        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+        time.sleep(0.5)
+        if pynq.tests.util.waiting_user_input():
             termios.tcflush(sys.stdin, termios.TCIOFLUSH)
             break
             

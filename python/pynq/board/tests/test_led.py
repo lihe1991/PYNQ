@@ -35,12 +35,17 @@ __email__       = "pynq_support@xilinx.com"
 import sys
 import select
 import termios
-from time import sleep
+import time
 import pytest
 from pynq.board import LED
 from pynq.tests.util import user_answer_yes
+from pynq.tests.util import waiting_user_input
+import pynq.tests.util
+from pynq.tests.play_record import play_record
 
 @pytest.mark.run(order=5)
+@play_record('test_leds_on.trace','builtins.input','pynq.board.led.MMIO',
+             'pynq.board.led.PL','builtins.print')
 def test_leds_on():
     """Test for the LED class and its wrapper functions.
     
@@ -68,6 +73,9 @@ def test_leds_on():
     led.off()
     
 @pytest.mark.run(order=6)
+@play_record('test_leds_toggle.trace','builtins.input','pynq.board.led.MMIO',
+             'pynq.board.led.PL','pynq.tests.util.waiting_user_input',
+             'time.sleep','builtins.print')
 def test_leds_toggle():
     """Test for the LED class and its wrapper functions.
     
@@ -82,8 +90,8 @@ def test_leds_toggle():
     while True:
         for led in leds:
             led.toggle()
-        sleep(0.1)
-        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+        time.sleep(0.1)
+        if pynq.tests.util.waiting_user_input():
             termios.tcflush(sys.stdin, termios.TCIOFLUSH)
             break
             
