@@ -38,18 +38,22 @@ from pynq import Overlay
 from pynq.iop import iop
 from pynq.iop import iop_const
 from pynq.iop import DevMode
-
-global ol
-ol = Overlay("base.bit")
+from pynq.tests.play_record import play_record
+import pynq
 
 @pytest.mark.run(order=14)
-def test_devmode():
+@play_record('test_devmode_1.trace','pynq.tests.util.user_answer_yes',
+             'pynq.iop.iop.PL','pynq.iop.iop.GPIO','pynq.iop.iop.MMIO',
+             'pynq.Overlay','pynq.iop.devmode.MMIO')
+def test_devmode_1():
     """Tests whether DevMode returns an _IOP for Pmod 1 and 2.
     
     For each Pmod ID, instantiate a DevMode object with various switch 
     configurations. The returned objects should not be None.
     
     """
+    ol = pynq.Overlay("base.bit")
+    ol.reset()
     for iop_id in range(1,3):
         assert DevMode(iop_id, iop_const.PMOD_SWCFG_IIC0_TOPROW) is not None
         assert DevMode(iop_id, iop_const.PMOD_SWCFG_IIC0_BOTROW) is not None
@@ -58,13 +62,18 @@ def test_devmode():
     ol.reset()
 
 @pytest.mark.run(order=15)
-def test_devmode():
+@play_record('test_devmode_2.trace','pynq.tests.util.user_answer_yes',
+             'pynq.iop.iop.PL','pynq.iop.iop.GPIO','pynq.iop.iop.MMIO',
+             'pynq.Overlay','pynq.iop.devmode.MMIO')
+def test_devmode_2():
     """Tests whether DevMode write and read work for Pmod 1 and 2.
     
     For each Pmod ID, write a command to the mailbox and read another command
     from the mailbox. Test whether the write and the read are successful.
     
     """
+    ol = pynq.Overlay("base.bit")
+    ol.reset()
     for iop_id in range(1,3):
         # Initiate the IOP
         iop = DevMode(iop_id, iop_const.PMOD_SWCFG_DIOALL)

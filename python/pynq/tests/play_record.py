@@ -73,7 +73,7 @@ elif 'PYNQ_TEST_RECORD_DIR' in os.environ:
     
 # Objects listed here will not be wrapped with a Mock
 def isprimitive(obj):
-    return isinstance(obj, (str, int, float, bool, dict))
+    return isinstance(obj, (str, int, float, bool, dict, list, type(None)))
 
 # Contructs a new mock based on the current record mode
 class Constructor:
@@ -97,7 +97,7 @@ def start_record():
 def end_record(filename=None):
     if filename:
         with open(filename, 'wb') as f:
-            pickle.dump(record, f, protocol=0)
+            pickle.dump(record, f, protocol=3)
         
 
 def start_playback(filename=None):

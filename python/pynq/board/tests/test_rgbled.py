@@ -68,7 +68,6 @@ def test_rgbleds():
             assert rgbled.read()==color, 'Wrong state for RGBLED.'
         time.sleep(0.5)
         if pynq.tests.util.waiting_user_input():
-            termios.tcflush(sys.stdin, termios.TCIOFLUSH)
             break
             
     for rgbled in rgbleds:

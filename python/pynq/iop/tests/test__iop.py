@@ -33,13 +33,15 @@ __email__       = "pynq_support@xilinx.com"
 
 
 import pytest
+import pynq
 from pynq import Overlay
 from pynq.iop import request_iop
-
-global ol
-ol = Overlay("base.bit")
+from pynq.tests.play_record import play_record
 
 @pytest.mark.run(order=11)
+@play_record('test_request_iop.trace','pynq.tests.util.user_answer_yes',
+             'pynq.iop.iop.PL','pynq.iop.iop.GPIO','pynq.iop.iop.MMIO',
+             'pynq.Overlay')
 def test_request_iop():
     """Test for the _IOP class and the method request_iop().
     
@@ -47,6 +49,8 @@ def test_request_iop():
     This is a test for case 1 (for more information, please see request_iop).
     
     """
+    ol = pynq.Overlay("base.bit")
+    ol.reset()
     fixed_id = 1
     exception_raised = False
     try:
@@ -58,6 +62,9 @@ def test_request_iop():
     ol.reset()
     
 @pytest.mark.run(order=12)
+@play_record('test_request_iop_same.trace','pynq.tests.util.user_answer_yes',
+             'pynq.iop.iop.PL','pynq.iop.iop.GPIO','pynq.iop.iop.MMIO',
+             'pynq.Overlay')
 def test_request_iop_same():
     """Test for the _IOP class and the method request_iop().
     
@@ -66,6 +73,8 @@ def test_request_iop_same():
     This is a test for case 1 (for more information, please see request_iop).
     
     """
+    ol = pynq.Overlay("base.bit")
+    ol.reset()
     fixed_id = 1
     exception_raised = False
     request_iop(fixed_id,'mailbox.bin')
@@ -78,6 +87,9 @@ def test_request_iop_same():
     ol.reset()
     
 @pytest.mark.run(order=13)
+@play_record('test_request_iop_conflict.trace','pynq.tests.util.user_answer_yes',
+             'pynq.iop.iop.PL','pynq.iop.iop.GPIO','pynq.iop.iop.MMIO',
+             'pynq.Overlay')
 def test_request_iop_conflict():
     """Test for the _IOP class and the method request_iop().
     
@@ -86,6 +98,8 @@ def test_request_iop_conflict():
     This is a test for case 2 (for more information, please see request_iop).
     
     """
+    ol = pynq.Overlay("base.bit")
+    ol.reset()
     fixed_id = 1
     request_iop(fixed_id,'pmod_adc.bin')
     pytest.raises(LookupError, request_iop, fixed_id, 'pmod_dac.bin')

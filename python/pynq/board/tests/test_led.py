@@ -92,7 +92,6 @@ def test_leds_toggle():
             led.toggle()
         time.sleep(0.1)
         if pynq.tests.util.waiting_user_input():
-            termios.tcflush(sys.stdin, termios.TCIOFLUSH)
             break
             
     for led in leds:

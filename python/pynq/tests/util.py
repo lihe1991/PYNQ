@@ -33,6 +33,8 @@ __email__       = "pynq_support@xilinx.com"
 
 import sys
 import select
+import os
+import termios
 
 def user_answer_yes(text):
     answer = input(text + ' ([yes]/no)>>> ').lower()
@@ -41,7 +43,9 @@ def user_answer_yes(text):
 def user_answer_no(text):
     answer = input(text + ' (yes/[no])>>> ').lower()
     return answer == 'n' or answer == 'no' or answer == ''
-
+    
 def waiting_user_input():
-	return sys.stdin in select.select([sys.stdin], [], [], 0)[0]
-
+    ret = sys.stdin in select.select([sys.stdin], [], [], 0)[0]
+    if ret:
+        termios.tcflush(sys.stdin, termios.TCIOFLUSH)
+    return ret

@@ -33,10 +33,12 @@ __email__       = "pynq_support@xilinx.com"
 
 
 import pytest
+import pynq.tests.util
+
 from pynq import Overlay
 from pynq.iop import Pmod_OLED
 from pynq.tests.util import user_answer_yes
-
+from pynq.tests.play_record import play_record
 flag = user_answer_yes("\nPMOD OLED attached to the board?")
 if flag:
     global oled_id
@@ -44,6 +46,8 @@ if flag:
 
 @pytest.mark.run(order=25)
 @pytest.mark.skipif(not flag, reason="need OLED attached in order to run")
+@play_record('test_write_string.trace','pynq.tests.util.user_answer_yes',
+                 'pynq.iop.iop.PL','pynq.iop.iop.GPIO','pynq.iop.iop.MMIO')
 def test_write_string():
     """Test for the OLED Pmod.
     
@@ -61,9 +65,9 @@ def test_write_string():
     oled.draw_line(0,20,255,20)
     oled.draw_line(0,22,255,22)
 
-    assert user_answer_yes("\nWelcome message shown on the OLED?")
+    assert pynq.tests.util.user_answer_yes("\nWelcome message shown on the OLED?")
     oled.clear()
-    assert user_answer_yes("OLED screen clear now?")      
+    assert pynq.tests.util.user_answer_yes("OLED screen clear now?")      
     
     del oled
     
