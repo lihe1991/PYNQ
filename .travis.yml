@@ -2,10 +2,11 @@ language: python
 python:
   - "3.4"
 install:
+  - sudo apt-get install gcc-arm-linux-gnueabi
   - echo $PYNQ_TEST_PLAYBACK_DIR
   - pip install $TRAVIS_BUILD_DIR/python
 script:
   - pytest -s $TRAVIS_BUILD_DIR/python/pynq/board
-sudo: false
+sudo: true
 env:
   - PYNQ_TEST_PLAYBACK_DIR=$TRAVIS_BUILD_DIR/test_data
