@@ -2,7 +2,7 @@ language: python
 python:
   - "3.4"
 install:
-  - sudo apt-get install gcc-arm-linux-gnueabi
+  - sudo apt-get install gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf
   - echo $PYNQ_TEST_PLAYBACK_DIR
   - pip install $TRAVIS_BUILD_DIR/python
 script:
