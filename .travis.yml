@@ -4,4 +4,7 @@ python:
 install:
   - pip install --user $PWD/python
 script:
-  - pytest -s $PWD/python/pynq/board
+  - pytest -s $TRAVIS_BUILD_DIR/python/pynq/board
+sudo: false
+env:
+  - PYNQ_TEST_PLAYBACK_DIR=$TRAVIS_BUILD_DIR/test_data
