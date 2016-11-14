@@ -1,0 +1,7 @@
+language: python
+python:
+  - "3.4"
+install:
+  - pip install --user $PWD/python
+script:
+  - pytest -s $PWD/python/pynq/board

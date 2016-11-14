@@ -33,6 +33,7 @@ __email__       = "pynq_support@xilinx.com"
 
 
 from setuptools import setup, Extension, find_packages
+import platform
 import shutil
 import subprocess
 import sys
@@ -90,7 +91,20 @@ def run_make(src_path,dst_path, output_lib):
 if len(sys.argv) > 1 and sys.argv[1] == 'install':
     run_make("pynq/_pynq/_apf/", "pynq/drivers/" ,"libdma.so")
     run_make("pynq/_pynq/_audio/", "pynq/drivers/" ,"libaudio.so")
-    
+
+ext_modules = []
+
+if platform.machine() != 'x86_64':
+    ext_modules = [
+        Extension('pynq.drivers._video', video, 
+                  include_dirs = ['pynq/_pynq/inc', 
+                                  'pynq/_pynq/bsp/ps7_cortexa9_0/include'],
+                  libraries = ['sds_lib'],
+                  library_dirs = ['/usr/lib'],
+                  extra_compile_args = ['-std=c99'],
+                 ),
+        ]
+
 setup(  name='pynq',
         version='1.0',
         description='Python for Xilinx package',
@@ -102,12 +116,5 @@ setup(  name='pynq',
         package_data = {
           '': ['tests/*','js/*','*.bin','*.so','bitstream/*','*.pdm'],
         },
-        ext_modules = [
-            Extension('pynq.drivers._video', video, 
-                      include_dirs = ['pynq/_pynq/inc', 
-                                      'pynq/_pynq/bsp/ps7_cortexa9_0/include'],
-                      libraries = ['sds_lib'],
-                      library_dirs = ['/usr/lib'],
-                    ),
-        ]
+        ext_modules = ext_modules
     )
