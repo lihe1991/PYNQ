@@ -39,6 +39,7 @@ from functools import wraps
 from functools import reduce
 import sys
 import os
+import re
 import time
 import pickle
 import builtins
@@ -88,6 +89,40 @@ class Constructor:
         else:
             return self.obj
 
+def default_assertion(exp, act):
+    assert(exp.hash == act.hash)
+    assert(exp.args == act.args)
+    assert(exp.kwargs == act.kwargs)
+    return exp.ret
+
+def normal_path(path):
+    return os.path.split(path)[1]
+
+ip_states = {}
+
+def PL_load_ip_data_assertion(exp, act):
+    global ip_states
+    assert(exp.hash == act.hash)
+    assert(exp.kwargs == act.kwargs)
+    assert(len(exp.args) == len(act.args))
+    for i in range(len(exp.args)):
+        if i == 1:
+           assert(normal_path(exp.args[i]) == normal_path(act.args[i]))
+        else:
+           assert(exp.args[i] == act.args[i])
+    ip_states[act.args[0]] = act.args[1]
+    return exp.ret
+
+def PL_get_ip_state_assertion(exp, act):
+    assert(exp.hash == act.hash)
+    assert(exp.kwargs == act.kwargs)
+    assert(exp.args == act.args)
+
+    if act.args[0] in ip_states:
+        return ip_states[act.args[0]]
+    else:
+        return None
+
 def start_record():
     global record
     global record_mode
@@ -103,17 +138,22 @@ def end_record(filename=None):
 def start_playback(filename=None):
     global playback
     global record_mode
+    global ip_states
     if filename:
         with open(filename, 'rb') as f:
             playback = deque(pickle.load(f))
     else:
         playback = deque(record)
     record_mode = MOCK_MODE_PLAYBACK
+    ip_states.clear()
 
 def end_playback():
     assert (not playback)
     
     
+normalisers = [(re.compile('.*PL.load_ip_data'), PL_load_ip_data_assertion),
+               (re.compile('.*PL.get_ip_state'), PL_get_ip_state_assertion)]
+
 class RecordMock:
     def __init__(self, obj, name = ''):
         self.wrapped_object = obj
@@ -138,6 +178,9 @@ class RecordMock:
             record.append(Call(action='call',hash=hash(self),args=args,kwargs=kwargs,ret=None))
             return RecordMock(new_obj, self.name + '()')
 
+    def __repr__(self):
+        return 'RecordMock(obj={0}, name={1})'.format(repr(self.obj), self.name)
+
 class PlayMock:
     def __init__(self, obj, name = ''):
         self.name = name
@@ -145,6 +188,10 @@ class PlayMock:
         assert(call.action == 'init')
         assert(call.args == self.name)
         self.mapped_hash = call.hash
+        self.assertion = default_assertion
+        for p in normalisers:
+            if p[0].match(name):
+                self.assertion = p[1]
     
     def __getattr__(self, name):
         call = playback.popleft()
@@ -158,16 +205,19 @@ class PlayMock:
             assert(False)
     
     def __call__(self, *args, **kwargs):
-        call = playback.popleft()
-        assert(call.hash == self.mapped_hash)
-        assert(call.args == args)
-        assert(call.kwargs == kwargs)
-        if call.action == 'call':
+        expected = playback.popleft()
+        actual = Call(hash = self.mapped_hash, args = args,
+                      kwargs = kwargs, action = 'call')
+        ret = self.assertion(expected, actual)
+        if expected.action == 'call':
             return PlayMock(None, self.name + '()')
-        elif call.action == 'call_prim':
-            return call.ret
+        elif expected.action == 'call_prim':
+            return ret
         else:
             assert(False)
+
+    def __repr__(self):
+        return 'PlayMock(name={0})'.format(self.name)
 
 # Helper function to find an object from a fully qualified python name
 def str_to_object(string):

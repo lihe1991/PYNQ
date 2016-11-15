@@ -6,7 +6,7 @@ install:
   - echo $PYNQ_TEST_PLAYBACK_DIR
   - pip install $TRAVIS_BUILD_DIR/python
 script:
-  - pytest -s $TRAVIS_BUILD_DIR/python/pynq/board
+  - pytest -s $TRAVIS_BUILD_DIR/python/pynq/board $TRAVIS_BUILD_DIR/python/pynq/iop < $TRAVIS_BUILD_DIR/test_data/commands.txt
 sudo: true
 env:
   - PYNQ_TEST_PLAYBACK_DIR=$TRAVIS_BUILD_DIR/test_data
