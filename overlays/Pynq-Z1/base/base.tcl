@@ -94,7 +94,7 @@ if { $list_projs eq "" } {
    create_project base base -part xc7z020clg400-1
 }
 
-set_property  ip_repo_paths  ../ip [current_project]
+set_property  ip_repo_paths  ../../ip [current_project]
 update_ip_catalog
 
 # CHANGE DESIGN NAME HERE

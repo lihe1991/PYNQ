@@ -2,4 +2,4 @@ all:
 	vivado -mode batch -source base.tcl
 
 clean:
-	rm -rf base* vivado* *.log
+	rm -rf base *.jou *.log
