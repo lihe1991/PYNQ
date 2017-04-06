@@ -1,9 +1,5 @@
-
-PYNQ_ROOT = ../../..
-
-
 all:
-	vivado -mode batch -source ${PYNQ_ROOT}/Pynq-Z1/bitstream/base.tcl
+	vivado -mode batch -source base.tcl
 
 clean:
 	rm -rf base* vivado* *.log

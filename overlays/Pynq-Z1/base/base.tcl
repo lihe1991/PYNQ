@@ -3684,10 +3684,10 @@ make_wrapper -files [get_files ./base/base.srcs/sources_1/bd/system/system.bd] -
 add_files -norecurse ./base/base.srcs/sources_1/bd/system/hdl/system_wrapper.v
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1
-add_files -fileset constrs_1 -norecurse ./src/constraints/top.xdc
+add_files -fileset constrs_1 -norecurse ./vivado_src/constraints/top.xdc
 
 # replace top wrapper with custom top.v
-add_files -norecurse ./src/top.v
+add_files -norecurse ./vivado_src/top.v
 update_compile_order -fileset sources_1
 set_property top top [current_fileset]
 update_compile_order -fileset sources_1
@@ -3699,9 +3699,9 @@ wait_on_run impl_1
 # This hwardware definition file will be used for microblaze projects
 file mkdir ./base/base.sdk
 write_hwdef -force  -file ./base/base.sdk/base.hdf
-file copy -force ./base/base.sdk/base.hdf ../../sdk/
+file copy -force ./base/base.sdk/base.hdf .
 
 # move and rename bitstream to final location
-file copy -force ./base/base.runs/impl_1/top.bit ../../bitstream/base.bit
+file copy -force ./base/base.runs/impl_1/top.bit base.bit
 
 
