@@ -33,43 +33,72 @@ __email__       = "pynq_support@xilinx.com"
 
 
 from setuptools import setup, Extension, find_packages
+from setuptools.command.install import install
 import shutil
 import subprocess
 import sys
 import os
+import site
+import stat
+from datetime import datetime
+from itertools import chain
+
+
+''' Board specific package delivery setup '''
+if 'BOARD' not in os.environ:
+    print("Please set the BOARD environment variable to get any BOARD specific overlays (e.g. Pynq-Z1).")
+    board = None
+    board_folder = None
+    pynq_data_files = None
+else:
+    board = os.environ['BOARD']
+    board_folder = 'overlays/{}/'.format(board)
+    pynq_data_files = [(os.path.join('{}/pynq'.format(site.getsitepackages()[0]), root.replace(board_folder, '')),
+                        [os.path.join(root, f) for f in files]) for root, dirs, files in os.walk(board_folder)]
+
+
+''' Notebook Delivery '''
+default_nb_dir = '/home/xilinx/jupyter_notebooks'
+if 'PYNQ_JUPYTER_NOTEBOOKS' in os.environ:
+    notebooks_dir = os.environ['PYNQ_JUPYTER_NOTEBOOKS']
+elif os.path.exists(default_nb_dir):
+    notebooks_dir = default_nb_dir
+else:
+    notebooks_dir = None
+
 
 # Video source files
-_video_src = ['pynq/_pynq/_video/_video.c', 'pynq/_pynq/_video/_capture.c', 
-              'pynq/_pynq/_video/_display.c', 'pynq/_pynq/_video/_frame.c', 
-              'pynq/_pynq/src/gpio.c', 'pynq/_pynq/src/py_xaxivdma.c', 
-              'pynq/_pynq/src/py_xvtc.c', 'pynq/_pynq/src/utils.c',  
-              'pynq/_pynq/src/py_xgpio.c',
-              'pynq/_pynq/src/video_capture.c', 
-              'pynq/_pynq/src/video_display.c']
+_video_src = ['pynq/lib/_pynq/_video/_video.c', 'pynq/lib/_pynq/_video/_capture.c', 
+              'pynq/lib/_pynq/_video/_display.c', 'pynq/lib/_pynq/_video/_frame.c', 
+              'pynq/lib/_pynq/src/gpio.c', 'pynq/lib/_pynq/src/py_xaxivdma.c', 
+              'pynq/lib/_pynq/src/py_xvtc.c', 'pynq/lib/_pynq/src/utils.c',  
+              'pynq/lib/_pynq/src/py_xgpio.c',
+              'pynq/lib/_pynq/src/video_capture.c', 
+              'pynq/lib/_pynq/src/video_display.c']
 
 # BSP source files
 bsp_axivdma = \
-  ['pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/axivdma_v6_0/src/xaxivdma.c',
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/axivdma_v6_0/src/xaxivdma_channel.c', 
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/axivdma_v6_0/src/xaxivdma_intr.c', 
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/axivdma_v6_0/src/xaxivdma_selftest.c']
+  ['pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/axivdma_v6_0/src/xaxivdma.c',
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/axivdma_v6_0/src/xaxivdma_channel.c', 
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/axivdma_v6_0/src/xaxivdma_intr.c', 
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/axivdma_v6_0/src/xaxivdma_selftest.c']
 
 bsp_gpio = \
-  ['pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/gpio_v4_0/src/xgpio.c', 
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/gpio_v4_0/src/xgpio_extra.c',
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/gpio_v4_0/src/xgpio_intr.c',
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/gpio_v4_0/src/xgpio_selftest.c']
+  ['pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/gpio_v4_0/src/xgpio.c', 
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/gpio_v4_0/src/xgpio_extra.c',
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/gpio_v4_0/src/xgpio_intr.c',
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/gpio_v4_0/src/xgpio_selftest.c']
 
 bsp_vtc = \
-  ['pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/vtc_v7_0/src/xvtc.c', 
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/vtc_v7_0/src/xvtc_intr.c', 
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/vtc_v7_0/src/xvtc_selftest.c']
+  ['pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/vtc_v7_0/src/xvtc.c', 
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/vtc_v7_0/src/xvtc_intr.c', 
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/vtc_v7_0/src/xvtc_selftest.c']
 
 bsp_standalone = \
-  ['pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/standalone_v5_2/src/xplatform_info.c',
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/standalone_v5_2/src/xil_assert.c',
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/standalone_v5_2/src/xil_io.c',
-   'pynq/_pynq/bsp/ps7_cortexa9_0/libsrc/standalone_v5_2/src/xil_exception.c']
+  ['pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/standalone_v5_2/src/xplatform_info.c',
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/standalone_v5_2/src/xil_assert.c',
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/standalone_v5_2/src/xil_io.c',
+   'pynq/lib/_pynq/bsp/ps7_cortexa9_0/libsrc/standalone_v5_2/src/xil_exception.c']
 
 # Merge BSP src to _video src
 video = []
@@ -79,6 +108,50 @@ video.extend(bsp_gpio)
 video.extend(bsp_vtc)
 video.extend(_video_src)
 
+
+# Build Package Data files - notebooks, overlays
+def fill_notebooks_dir():
+    if notebooks_dir is None:
+        return None
+
+    # overlays/BOARD/OVERLAY/notebooks
+    overlay_notebook_folders = [os.path.join(board_folder, ol, 'notebooks/') for ol in os.listdir(board_folder)
+                       if os.path.isdir(os.path.join(board_folder, ol, 'notebooks'))]
+
+    # pynq/notebooks/*
+    pynq_notebook_files = ([(os.path.join(notebooks_dir, root.replace('pynq/notebooks/', '')),
+                             [os.path.join(root, f) for f in files]) for root, dirs, files in
+                            os.walk('pynq/notebooks/')])
+
+    # overlays/BOARD/OVERLAY_NAME/notebooks/*
+    for nb_dir in overlay_notebook_folders:
+        pynq_notebook_files.extend([(os.path.join(notebooks_dir, root.replace(nb_dir, '')),
+                                 [os.path.join(root, f) for f in files]) for root, dirs, files in os.walk(nb_dir)])
+
+    # copy notebooks into final destination
+    for dst, files in pynq_notebook_files:
+        if not os.path.exists(dst):
+            os.makedirs(dst)
+        for file in files:
+            shutil.copy(file, dst)
+            dst_file = os.path.join(dst,os.path.basename(file))
+            os.chmod(dst_file, os.stat(dst_file).st_mode | stat.S_IWOTH)
+
+
+# Backup Notebooks
+def backup_notebooks():
+    if notebooks_dir is None:
+        return None
+
+    notebooks_dir_backup = '{}_{}'.format(notebooks_dir, datetime.now().strftime("%Y_%m_%d_%H-%M-%S"))
+    try:
+        shutil.copytree(notebooks_dir, notebooks_dir_backup)
+    except Exception as e:
+        print ('Unable to backup notebooks {}'.format(e))
+        raise e
+    return notebooks_dir_backup
+
+
 # Run Makefiles here
 def run_make(src_path,dst_path, output_lib):
     status = subprocess.check_call(["make", "-C", src_path])
@@ -87,10 +160,14 @@ def run_make(src_path,dst_path, output_lib):
         sys.exit(1)
     shutil.copyfile( src_path + output_lib, dst_path +  output_lib )
 
+
 if len(sys.argv) > 1 and sys.argv[1] == 'install':
-    run_make("pynq/_pynq/_apf/", "pynq/drivers/" ,"libdma.so")
-    run_make("pynq/_pynq/_audio/", "pynq/drivers/" ,"libaudio.so")
-    
+    run_make("pynq/lib/_pynq/_apf/", "pynq/lib/" ,"libdma.so")
+    run_make("pynq/lib/_pynq/_audio/", "pynq/lib/" ,"libaudio.so")
+
+    backup_notebooks()
+    fill_notebooks_dir()
+
 setup(  name='pynq',
         version='1.4',
         description='Python for Xilinx package',
@@ -103,11 +180,12 @@ setup(  name='pynq',
           '': ['tests/*','js/*','*.bin','*.so','bitstream/*','*.pdm'],
         },
         ext_modules = [
-            Extension('pynq.drivers._video', video, 
-                      include_dirs = ['pynq/_pynq/inc', 
-                                      'pynq/_pynq/bsp/ps7_cortexa9_0/include'],
+            Extension('pynq.lib._video', video,
+                      include_dirs = ['pynq/lib/_pynq/inc', 
+                                      'pynq/lib/_pynq/bsp/ps7_cortexa9_0/include'],
                       libraries = ['sds_lib'],
                       library_dirs = ['/usr/lib'],
                     ),
-        ]
+        ],
+        data_files = pynq_data_files
     )
