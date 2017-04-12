@@ -32,7 +32,6 @@ __copyright__ = "Copyright 2016, Xilinx"
 __email__ = "pynq_support@xilinx.com"
 
 
-from . import general_const
 from .gpio import GPIO
 from .mmio import MMIO
 from .pl import PL
@@ -41,4 +40,4 @@ from .pl import Overlay
 from .interrupt import Interrupt
 from .xlnk import Xlnk
 
-__all__ = ['tests', 'board', 'iop', 'drivers']
+__all__ = ['lib', 'tests']

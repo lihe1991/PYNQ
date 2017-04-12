@@ -28,20 +28,27 @@
 #   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
-import sys
 import re
 import mmap
 import math
 from datetime import datetime
 from multiprocessing.connection import Listener
 from multiprocessing.connection import Client
-from pynq import general_const
-from pynq import GPIO
 from pynq import MMIO
 
 __author__ = "Yun Rock Qu"
 __copyright__ = "Copyright 2016, Xilinx"
 __email__ = "pynq_support@xilinx.com"
+
+# Overlay constants
+PYNQ_PATH = os.path.dirname(os.path.realpath(__file__))
+BS_BOOT = os.path.join(PYNQ_PATH, 'base', 'base.bit')
+TCL_BOOT = os.path.join(PYNQ_PATH, 'base', 'base.tcl')
+
+BS_IS_PARTIAL = "/sys/devices/soc0/amba/f8007000.devcfg/is_partial_bitstream"
+BS_XDEVCFG = "/dev/xdevcfg"
+
+PL_SERVER_FILE = os.path.join(PYNQ_PATH, '.log')
 
 
 def _get_tcl_name(bitfile_name):
@@ -456,13 +463,12 @@ class PL(metaclass=PL_Meta):
 
     """
 
-    _bitfile_name = general_const.BS_BOOT
+    _bitfile_name = BS_BOOT
     _timestamp = ""
 
-    _ip_dict = _get_ip(general_const.TCL_BOOT)
-    _gpio_dict = _get_gpio(general_const.TCL_BOOT)
-    _interrupt_controllers, _interrupt_pins = _get_interrupts(
-        general_const.TCL_BOOT)
+    _ip_dict = _get_ip(TCL_BOOT)
+    _gpio_dict = _get_gpio(TCL_BOOT)
+    _interrupt_controllers, _interrupt_pins = _get_interrupts(TCL_BOOT)
     _server = None
     _host = None
     _remote = None
@@ -478,7 +484,7 @@ class PL(metaclass=PL_Meta):
             raise EnvironmentError('Root permissions required.')
 
     @classmethod
-    def setup(cls, address='/home/xilinx/pynq/bitstream/.log', key=b'xilinx'):
+    def setup(cls, address=PL_SERVER_FILE, key=b'xilinx'):
         """Start the PL server and accept client connections.
 
         This method should not be used by the users directly. To check open
@@ -513,8 +519,7 @@ class PL(metaclass=PL_Meta):
         cls._server.close()
 
     @classmethod
-    def client_request(cls, address='/home/xilinx/pynq/bitstream/.log',
-                       key=b'xilinx'):
+    def client_request(cls, address=PL_SERVER_FILE, key=b'xilinx'):
         """Client connects to the PL server and receives the attributes.
 
         This method should not be used by the users directly. To check open
@@ -640,8 +645,8 @@ class Bitstream(PL):
 
         Users can either specify an absolute path to the bitstream file
         (e.g. '/home/xilinx/src/pynq/bitstream/base.bit'),
-        or only a relative path.
-        (e.g. 'base.bit').
+        or a relative path within an overlay folder.
+        (e.g. 'base.bit' for base/base.bit).
 
         Note
         ----
@@ -657,10 +662,13 @@ class Bitstream(PL):
         if not isinstance(bitfile_name, str):
             raise TypeError("Bitstream name has to be a string.")
 
+        bitfile_abs = os.path.abspath(bitfile_name)
+        bitfile_overlay_abs = os.path.join(PYNQ_PATH, bitfile_name.replace('.bit', ''), bitfile_name)
+
         if os.path.isfile(bitfile_name):
-            self.bitfile_name = bitfile_name
-        elif os.path.isfile(general_const.BS_SEARCH_PATH + bitfile_name):
-            self.bitfile_name = general_const.BS_SEARCH_PATH + bitfile_name
+            self.bitfile_name = bitfile_abs
+        elif os.path.isfile(bitfile_overlay_abs):
+            self.bitfile_name = bitfile_overlay_abs
         else:
             raise IOError('Bitstream file {} does not exist.'
                           .format(bitfile_name))
@@ -684,11 +692,11 @@ class Bitstream(PL):
             buf = f.read()
 
         # Set is_partial_bitfile device attribute to 0
-        with open(general_const.BS_IS_PARTIAL, 'w') as fd:
+        with open(BS_IS_PARTIAL, 'w') as fd:
             fd.write('0')
 
         # Write bitfile to xdevcfg device
-        with open(general_const.BS_XDEVCFG, 'wb') as f:
+        with open(BS_XDEVCFG, 'wb') as f:
             f.write(buf)
 
         t = datetime.now()
@@ -781,19 +789,20 @@ class Overlay(PL):
         """
         super().__init__()
 
-        # Set the bitfile name
-        if not isinstance(bitfile_name, str):
-            raise TypeError("Bitstream name has to be a string.")
-        if os.path.isfile(bitfile_name):
-            self.bitfile_name = bitfile_name
-        elif os.path.isfile(general_const.BS_SEARCH_PATH + bitfile_name):
-            self.bitfile_name = general_const.BS_SEARCH_PATH + bitfile_name
-        else:
-            raise IOError('Bitstream file {} does not exist.'
-                          .format(bitfile_name))
+        # # Set the bitfile name
+        # if not isinstance(bitfile_name, str):
+        #     raise TypeError("Bitstream name has to be a string.")
+        # if os.path.isfile(bitfile_name):
+        #     self.bitfile_name = bitfile_name
+        # elif os.path.isfile(BS_SEARCH_PATH + bitfile_name):
+        #     self.bitfile_name = BS_SEARCH_PATH + bitfile_name
+        # else:
+        #     raise IOError('Bitstream file {} does not exist.'
+        #                   .format(bitfile_name))
 
         # Set the bitstream
-        self.bitstream = Bitstream(self.bitfile_name)
+        self.bitstream = Bitstream(bitfile_name)
+        self.bitfile_name = self.bitstream.bitfile_name
         tcl_name = _get_tcl_name(self.bitfile_name)
 
         # Set the IP dictionary
