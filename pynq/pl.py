@@ -326,10 +326,10 @@ class PLMeta(type):
     exposed to users.
 
     """
-    _bitfile_name = general_const.BS_BOOT
+    _bitfile_name = BS_BOOT
     _timestamp = ""
 
-    _tcl = _TCL(general_const.TCL_BOOT)
+    _tcl = _TCL(TCL_BOOT)
     _ip_dict = _tcl.ip_dict
     _gpio_dict = _tcl.gpio_dict
     _interrupt_controllers = _tcl.interrupt_controllers

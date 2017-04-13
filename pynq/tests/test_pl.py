@@ -34,6 +34,8 @@ __email__ = "pynq_support@xilinx.com"
 import os
 import pytest
 from pynq import Overlay
+from pynq import Clocks
+from pynq.ps import DEFAULT_CLK_MHZ
 
 bitfile1 = 'base.bit'
 bitfile2 = 'interface.bit'
@@ -43,14 +45,14 @@ ol2 = Overlay(bitfile1)
 ol3 = Overlay(bitfile2)
 
 cpu_mhz = 0
-bitfile1_fclk0_mhz = general_const.DEFAULT_CLK_MHZ
-bitfile1_fclk1_mhz = general_const.DEFAULT_CLK_MHZ
-bitfile1_fclk2_mhz = general_const.DEFAULT_CLK_MHZ
-bitfile1_fclk3_mhz = general_const.DEFAULT_CLK_MHZ
-bitfile2_fclk0_mhz = general_const.DEFAULT_CLK_MHZ
-bitfile2_fclk1_mhz = general_const.DEFAULT_CLK_MHZ
-bitfile2_fclk2_mhz = general_const.DEFAULT_CLK_MHZ
-bitfile2_fclk3_mhz = general_const.DEFAULT_CLK_MHZ
+bitfile1_fclk0_mhz = DEFAULT_CLK_MHZ
+bitfile1_fclk1_mhz = DEFAULT_CLK_MHZ
+bitfile1_fclk2_mhz = DEFAULT_CLK_MHZ
+bitfile1_fclk3_mhz = DEFAULT_CLK_MHZ
+bitfile2_fclk0_mhz = DEFAULT_CLK_MHZ
+bitfile2_fclk1_mhz = DEFAULT_CLK_MHZ
+bitfile2_fclk2_mhz = DEFAULT_CLK_MHZ
+bitfile2_fclk3_mhz = DEFAULT_CLK_MHZ
 
 
 @pytest.mark.run(order=2)

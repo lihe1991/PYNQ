@@ -34,6 +34,8 @@ __email__ = "pynq_support@xilinx.com"
 
 from .gpio import GPIO
 from .mmio import MMIO
+from .ps import Register
+from .ps import Clocks
 from .pl import PL
 from .pl import Bitstream
 from .pl import Overlay
