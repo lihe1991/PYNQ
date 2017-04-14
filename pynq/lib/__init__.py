@@ -31,9 +31,14 @@ __author__ = "Graham Schelle"
 __copyright__ = "Copyright 2016, Xilinx"
 __email__ = "pynq_support@xilinx.com"
 
-from .audio import Audio
-from .video import HDMI
-from .video import Frame
-from .dma import DMA
-from .trace_buffer import Trace_Buffer
-from .usb_wifi import Usb_Wifi
+# from .audio import Audio
+# from .video import HDMI
+# from .video import Frame
+# from .dma import DMA
+# from .trace_buffer import Trace_Buffer
+# from .usb_wifi import Usb_Wifi
+
+from .led import LED
+from .rgbled import RGBLED
+from .switch import Switch
+from .button import Button
