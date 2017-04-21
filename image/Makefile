@@ -43,6 +43,8 @@ ${CCACHEDIR}:
 ${WORKDIR}/multistrap.config: ${MULTISTRAP_CONFIG} | ${WORKDIR}
 	cp $< $@
 
+${WORKDIR}/PYNQ: | ${WORKDIR}
+	git clone ../ $@
 
 ${WORKDIR}/rootfs-stage1.img: ${WORKDIR}/multistrap.config ${BOOT_FILES}  ${KERNEL_DEB} | ${WORKDIR} ${WORKDIR}/config_diff ${CCACHEDIR}
 	sudo -E ${SCRIPT_DIR}/create_mount_img.sh ${WORKDIR}/rootfs-stage1.img ${WORKDIR}/rootfs_staging

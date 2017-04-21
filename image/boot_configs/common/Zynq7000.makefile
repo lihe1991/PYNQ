@@ -2,7 +2,7 @@ makefileDir := $(dir $(CURDIR)/$(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST)
 
 UBOOT_MAKE_ARGS ?= CROSS_COMPILE=arm-linux-gnueabihf- ARCH=arm -j4
 LINUX_MAKE_ARGS ?= ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- UIMAGE_LOADADDR=2080000 -j4
-BOOT_BITSTREAM ?= ${WORKDIR}/PYNQ/${BOARD}/bitstream/base.bit
+BOOT_BITSTREAM ?= ${WORKDIR}/PYNQ/overlays/${BOARD}/base/base.bit
 
 DTC_REPO := https://github.com/Xilinx/device-tree-xlnx.git
 DTC_COMMIT := 11f81055d1afad67398fa5ef443b32be8bc74433
@@ -22,9 +22,6 @@ ${KERNEL_DEB}: ${WORKDIR}/linux/.config
 	cd ${WORKDIR}/linux && make ${LINUX_MAKE_ARGS} deb-pkg
 	mv ${WORKDIR}/linux-headers* ${WORKDIR}/linux-headers-4.6.0-xilinx.deb
 	mv ${WORKDIR}/linux-image* ${WORKDIR}/linux-image-4.6.0-xilinx.deb
-
-${WORKDIR}/PYNQ:
-	git_clone_checkout ${PYNQ_REPO} ${PYNQ_COMMIT} ${WORKDIR}/PYNQ
 
 ${OUTDIR}/devicetree.dtb: ${WORKDIR}/pynq_dts/system.dts ${WORKDIR}/pynq_dts/board.dtsi
 	cd ${WORKDIR}/pynq_dts && bash ${SOURCEDIR}/compile_dtc.sh > $@
