@@ -30,6 +30,7 @@ boot_files: ${BOOT_FILES} | ${OUTDIR}
 
 export WORKDIR
 export CCACHEDIR
+export QEMU_EXE
 
 ${WORKDIR}:
 	mkdir -p ${WORKDIR}
