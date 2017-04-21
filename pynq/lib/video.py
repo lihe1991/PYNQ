@@ -32,6 +32,7 @@ __copyright__ = "Copyright 2016, Xilinx"
 __email__ = "pynq_support@xilinx.com"
 
 from pynq import PL
+from pynq import register_hierarchy
 from time import sleep
 import numpy as np
 from PIL import Image
@@ -71,11 +72,12 @@ class HDMI(object):
     """
     def __init__(self, direction, video_mode=VMODE_640x480,
                  init_timeout=10, frame_list=None,
-                 vdma_name='SEG_axi_vdma_0_Reg',
-                 display_name='SEG_v_tc_0_Reg',
-                 capture_name='SEG_v_tc_1_Reg',
-                 clk_name='SEG_axi_dynclk_0_reg0',
-                 gpio_name='SEG_axi_gpio_video_Reg'):
+                 vdma_name='video/axi_vdma_0',
+                 display_name='video/v_tc_0',
+                 capture_name='video/v_tc_1',
+                 clk_name='video/axi_dynclk_0',
+                 gpio_name='video/axi_gpio_video',
+                 hierarchy=None):
         """Returns a new instance of an HDMI object. 
         
         Assign the given frame buffer if specified, otherwise create a new 
@@ -124,6 +126,13 @@ class HDMI(object):
         if (not isinstance(init_timeout, int)) or init_timeout < 1:
             raise ValueError("init_timeout should be integer >= 1.")
 
+        if hierarchy:
+            vdma_name = f'{hierarchy}/axi_vdma_0'
+            display_name = f'{hierarchy}/v_tc_0'
+            capture_name = f'{hierarchy}/v_tc_1'
+            clk_name = f'{hierarchy}/axi_dynclk_0'
+            gpio_name = f'{hierarchy}/axi_gpio_video'
+
         if vdma_name not in PL.ip_dict:
             raise LookupError("No such VDMA in the overlay.")
         if display_name not in PL.ip_dict:
@@ -136,7 +145,7 @@ class HDMI(object):
             raise LookupError("No such GPIO in the overlay.")
 
         vdma_dict = {
-            'BASEADDR': PL.ip_dict[vdma_name][0],
+            'BASEADDR': PL.ip_dict[vdma_name]['phys_addr'],
             'NUM_FSTORES': 3,
             'INCLUDE_MM2S': 1,
             'INCLUDE_MM2S_DRE': 0,
@@ -167,11 +176,11 @@ class HDMI(object):
             'ENABLE_DEBUG_ALL': 0,
             'ADDR_WIDTH': 32,
         }
-        vtc_display_addr = PL.ip_dict[display_name][0]
-        vtc_capture_addr = PL.ip_dict[capture_name][0]
-        dyn_clk_addr = PL.ip_dict[clk_name][0]
+        vtc_display_addr = PL.ip_dict[display_name]['phys_addr']
+        vtc_capture_addr = PL.ip_dict[capture_name]['phys_addr']
+        dyn_clk_addr = PL.ip_dict[clk_name]['phys_addr']
         gpio_dict = {
-            'BASEADDR': PL.ip_dict[gpio_name][0],
+            'BASEADDR': PL.ip_dict[gpio_name]['phys_addr'],
             'INTERRUPT_PRESENT': 1,
             'IS_DUAL': 1,
         }
@@ -860,3 +869,23 @@ class Frame(object):
                         [:height, :width, 2::-1]
         image = Image.fromarray(np_frame)
         image.save(path, 'JPEG')
+
+class HDMIWrapper:
+    def __init__(self, name):
+        self.name = name
+
+    def create_capture(self, *args, **kwargs):
+        return HDMI('in', *args, hierarchy=self.name, **kwargs)
+
+    def create_display(self, *args, **kwargs):
+        return HDMI('out', *args, hierarchy=self.name, **kwargs)
+
+def create_hdmi(name, description):
+    if ('axi_vdma_0' in description and
+            'v_tc_0' in description and
+            'v_tc_1' in description):
+         return HDMIWrapper(name)
+    return None
+
+
+register_hierarchy(create_hdmi)

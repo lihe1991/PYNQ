@@ -182,9 +182,9 @@ ARDUINO_CFG_UART_ALLOUTPUT  = 0x0
 ARDUINO_CFG_UART_ALLINPUT   = 0xffffffff
 
 # IOP mapping
-PMODA = 1
-PMODB = 2
-ARDUINO = 3
+PMODA = "iop1"
+PMODB = "iop2"
+ARDUINO = "iop3"
 
 # Stickit Pmod to grove pin mapping
 PMOD_GROVE_G1 = [0,4]

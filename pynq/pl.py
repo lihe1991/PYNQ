@@ -27,6 +27,8 @@
 #   OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import collections
+import importlib.util
 import os
 import re
 import mmap
@@ -83,31 +85,31 @@ class _TCL:
     ----------
     ip_dict : dict
         All the addressable IPs from PS7. Key is the name of the IP; value is
-        a dictionary mapping the physical address, address range, IP type, 
+        a dictionary mapping the physical address, address range, IP type,
         configuration dictionary, and the state associated with that IP:
-        {str: {'phys_addr' : int, 'addr_range' : int, 
+        {str: {'phys_addr' : int, 'addr_range' : int,
                'type' : str, 'config' : dict, 'state' : str}}.
     gpio_dict : dict
         All the GPIO pins controlled by PS7. Key is the name of the GPIO pin;
         value is a dictionary mapping user index (starting from 0),
-        and the state associated with that GPIO pin: 
+        and the state associated with that GPIO pin:
         {str: {'index' : int, 'state' : str}}.
     interrupt_controllers : dict
         All AXI interrupt controllers in the system attached to
         a PS7 interrupt line. Key is the name of the controller;
-        value is a dictionary mapping parent interrupt controller and the 
+        value is a dictionary mapping parent interrupt controller and the
         line index of this interrupt:
-        {str: {'parent': str, 'index' : int}}. 
+        {str: {'parent': str, 'index' : int}}.
         The PS7 is the root of the hierarchy and is unnamed.
     interrupt_pins : dict
-        All pins in the design attached to an interrupt controller. 
-        Key is the name of the pin; value is a dictionary 
-        mapping the interrupt controller and the line index used: 
+        All pins in the design attached to an interrupt controller.
+        Key is the name of the pin; value is a dictionary
+        mapping the interrupt controller and the line index used:
         {str: {'controller' : str, 'index' : int}}.
     clock_dict : dict
         All the PL clocks that can be controlled by the PS. Key is the index
-        of the clock (e.g., 0 for `fclk0`); value is a dictionary mapping the 
-        divisor values and the enable flag (1 for enabled, and 
+        of the clock (e.g., 0 for `fclk0`); value is a dictionary mapping the
+        divisor values and the enable flag (1 for enabled, and
         0 for disabled):
         {index: {'divisor0' : int, 'divisor1' : int, 'enable' : int}}
 
@@ -585,29 +587,30 @@ class PL(metaclass=PLMeta):
         year, month, day, hour, minute, second, microsecond.
     ip_dict : dict
         All the addressable IPs from PS7. Key is the name of the IP; value is
-        a dictionary mapping the physical address, address range, IP type, 
+        a dictionary mapping the physical address, address range, IP type,
         configuration dictionary, and the state associated with that IP:
-        {str: {'phys_addr' : int, 'addr_range' : int, 
+        {str: {'phys_addr' : int, 'addr_range' : int,
                'type' : str, 'config' : dict, 'state' : str}}.
     gpio_dict : dict
         All the GPIO pins controlled by PS7. Key is the name of the GPIO pin;
         value is a dictionary mapping user index (starting from 0),
-        and the state associated with that GPIO pin: 
+        and the state associated with that GPIO pin:
         {str: {'index' : int, 'state' : str}}.
     interrupt_controllers : dict
         All AXI interrupt controllers in the system attached to
         a PS7 interrupt line. Key is the name of the controller;
-        value is a dictionary mapping parent interrupt controller and the 
+        value is a dictionary mapping parent interrupt controller and the
         line index of this interrupt:
-        {str: {'parent': str, 'index' : int}}. 
+        {str: {'parent': str, 'index' : int}}.
         The PS7 is the root of the hierarchy and is unnamed.
     interrupt_pins : dict
-        All pins in the design attached to an interrupt controller. 
-        Key is the name of the pin; value is a dictionary 
-        mapping the interrupt controller and the line index used: 
+        All pins in the design attached to an interrupt controller.
+        Key is the name of the pin; value is a dictionary
+        mapping the interrupt controller and the line index used:
         {str: {'controller' : str, 'index' : int}}.
 
     """
+
     def __init__(self):
         """Return a new PL object.
 
@@ -693,8 +696,8 @@ class Bitstream(PL):
 
         t = datetime.now()
         self.timestamp = "{}/{}/{} {}:{}:{} +{}".format(
-                t.year, t.month, t.day,
-                t.hour, t.minute, t.second, t.microsecond)
+            t.year, t.month, t.day,
+            t.hour, t.minute, t.second, t.microsecond)
 
         # Update PL information
         PL.client_request()
@@ -707,7 +710,7 @@ class Bitstream(PL):
         PL.server_update()
 
 
-class Overlay(PL):
+class _Overlay(PL):
     """This class keeps track of a single bitstream's state and contents.
 
     The overlay class holds the state of the bitstream and enables run-time
@@ -756,26 +759,26 @@ class Overlay(PL):
         The corresponding bitstream object.
     ip_dict : dict
         All the addressable IPs from PS7. Key is the name of the IP; value is
-        a dictionary mapping the physical address, address range, IP type, 
+        a dictionary mapping the physical address, address range, IP type,
         configuration dictionary, and the state associated with that IP:
-        {str: {'phys_addr' : int, 'addr_range' : int, 
+        {str: {'phys_addr' : int, 'addr_range' : int,
                'type' : str, 'config' : dict, 'state' : str}}.
     gpio_dict : dict
         All the GPIO pins controlled by PS7. Key is the name of the GPIO pin;
         value is a dictionary mapping user index (starting from 0),
-        and the state associated with that GPIO pin: 
+        and the state associated with that GPIO pin:
         {str: {'index' : int, 'state' : str}}.
     interrupt_controllers : dict
         All AXI interrupt controllers in the system attached to
         a PS7 interrupt line. Key is the name of the controller;
-        value is a dictionary mapping parent interrupt controller and the 
+        value is a dictionary mapping parent interrupt controller and the
         line index of this interrupt:
-        {str: {'parent': str, 'index' : int}}. 
+        {str: {'parent': str, 'index' : int}}.
         The PS7 is the root of the hierarchy and is unnamed.
     interrupt_pins : dict
-        All pins in the design attached to an interrupt controller. 
-        Key is the name of the pin; value is a dictionary 
-        mapping the interrupt controller and the line index used: 
+        All pins in the design attached to an interrupt controller.
+        Key is the name of the pin; value is a dictionary
+        mapping the interrupt controller and the line index used:
         {str: {'controller' : str, 'index' : int}}.
 
     """
@@ -908,3 +911,101 @@ class Overlay(PL):
         """
         PL.load_ip_data(ip_name, data)
         self.ip_dict[ip_name]['state'] = data
+
+
+_ip_drivers = dict()
+_hierarchy_drivers = collections.deque()
+
+
+def _create_ip(desc):
+    if desc['type'] in _ip_drivers:
+        return _ip_drivers[desc['type']](description=desc)
+    else:
+        return MMIO(description=desc)
+
+
+class _IPMap:
+
+    def __init__(self, desc):
+        self._hierarchies = {k.partition('/')[0]
+                             for k in desc.keys() if k.count('/')}
+        self._ipnames = {k for k in desc.keys() if k.count('/') == 0}
+        self._description = desc
+
+    def __getattr__(self, key):
+        if key in self._hierarchies:
+            subdesc = {k.partition('/')[2]: v
+                       for k, v in self._description.items()
+                       if k.startswith(f'{key}/')}
+            ret = None
+            for hip in _hierarchy_drivers:
+                ret = hip(key, subdesc)
+                if ret:
+                    setattr(self, key, ret)
+                    return ret
+            ret = _IPMap(subdesc)
+            setattr(self, key, ret)
+            return ret
+        elif key in self._ipnames:
+            ret = _create_ip(self._description[key])
+            setattr(self, key, ret)
+            return ret
+        else:
+            try:
+                return getattr(super(), key)
+            except (AttributeError):
+                raise AttributeError(
+                    f"Could not find IP or hierarchy {key} in overlay")
+
+    def __dir__(self):
+        return (dir(super()) + [h for h in self._hierarchies] +
+                [i for i in self._ipnames])
+
+
+class AttributeOverlay(_Overlay):
+    """An Overlay exposing the IP in the PL as attributes
+
+    """
+
+    def __init__(self, bitfile):
+        super().__init__(bitfile)
+        self._ip_map = _IPMap(self.ip_dict)
+        self.download()
+
+    def __getattr__(self, key):
+        if self.programmed:
+            return getattr(self._ip_map, key)
+        else:
+            raise RuntimeError("Overlay not currently loaded")
+
+    @property
+    def programmed(self):
+        return PL.bitfile_name == self.bitfile_name
+
+    def __dir__(self):
+        return (dir(super()) + [h for h in self._ip_map._hierarchies] +
+                [i for i in self._ip_map._ipnames] + ['programmed'])
+
+
+def register_type(name, constructor):
+    _ip_drivers[name] = constructor
+
+
+def register_hierarchy(constructor):
+    _hierarchy_drivers.appendleft(constructor)
+
+
+def Overlay(bitfile, class_=None):
+    bitfile_path = os.path.join(general_const.BS_SEARCH_PATH, bitfile)
+    python_path = os.path.splitext(bitfile_path)[0] + '.py'
+    if class_:
+        return class_(bitfile)
+    elif os.path.exists(python_path):
+        spec = importlib.util.spec_from_file_location(
+            os.path.splitext(os.path.basename(bitfile_path))[0],
+            python_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.create_overlay(bitfile)
+    else:
+        return AttributeOverlay(bitfile)

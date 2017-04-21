@@ -40,6 +40,7 @@ import time
 from pynq import PL
 from pynq import GPIO
 from pynq import MMIO
+from pynq import register_hierarchy
 
 LIB_SEARCH_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -292,4 +293,12 @@ class Audio:
             print("Number of frames:   " + str(pdm_file.getnframes()))
             print("Compression type:   " + str(pdm_file.getcomptype()))
             print("Compression name:   " + str(pdm_file.getcompname()))
-            
+
+
+def create_audio(name, description):
+    audio_ip = [k for k, v in description.items() if v['type'] == 'xilinx.com:user:d_axi_pdm:1.2']
+    if audio_ip:
+        return Audio(ip=f'{name}/{audio_ip[0]}', rst=f'{name}_path_sel')
+    return None
+
+register_hierarchy(create_audio)
