@@ -4,6 +4,7 @@ PATH := $(CURDIR)/scripts:$(PATH)
 export PATH
 
 WORKDIR ?= $(CURDIR)/.build
+REL_WORKDIR ?= .build
 OUTDIR ?= $(CURDIR)/.build/boot_files
 CCACHEDIR := $(CURDIR)/.ccache
 SCRIPT_DIR := $(CURDIR)/scripts
@@ -48,15 +49,15 @@ ${WORKDIR}/PYNQ: | ${WORKDIR}
 	git clone ../ $@
 
 ${WORKDIR}/rootfs-stage1.img: ${WORKDIR}/multistrap.config ${BOOT_FILES}  ${KERNEL_DEB} | ${WORKDIR} ${WORKDIR}/config_diff ${CCACHEDIR}
-	sudo -E ${SCRIPT_DIR}/create_mount_img.sh ${WORKDIR}/rootfs-stage1.img ${WORKDIR}/rootfs_staging
+	sudo -E ${SCRIPT_DIR}/create_mount_img.sh ${REL_WORKDIR}/rootfs-stage1.img ${WORKDIR}/rootfs_staging
 	sudo -E ${SCRIPT_DIR}/create_rootfs.sh ${WORKDIR}/rootfs_staging
-	sudo -E ${SCRIPT_DIR}/unmount_image.sh ${WORKDIR}/rootfs_staging ${WORKDIR}/rootfs-stage1.img
+	sudo -E ${SCRIPT_DIR}/unmount_image.sh ${WORKDIR}/rootfs_staging ${REL_WORKDIR}/rootfs-stage1.img
 
 ${WORKDIR}/rootfs-stage2.img: ${WORKDIR}/rootfs-stage1.img ${PACKAGE_BUILD} | ${PACKAGE_DIRS}
 	cp --sparse=always ${WORKDIR}/rootfs-stage1.img ${WORKDIR}/rootfs-stage2.img
-	sudo -E ${SCRIPT_DIR}/mount_image.sh ${WORKDIR}/rootfs-stage2.img ${WORKDIR}/rootfs_staging
+	sudo -E ${SCRIPT_DIR}/mount_image.sh ${REL_WORKDIR}/rootfs-stage2.img ${WORKDIR}/rootfs_staging
 	sudo -E ${SCRIPT_DIR}/install_packages.sh ${WORKDIR}/rootfs_staging ${STAGE1_PACKAGES}
-	sudo -E ${SCRIPT_DIR}/unmount_image.sh ${WORKDIR}/rootfs_staging ${WORKDIR}/rootfs-stage2.img
+	sudo -E ${SCRIPT_DIR}/unmount_image.sh ${WORKDIR}/rootfs_staging ${REL_WORKDIR}/rootfs-stage2.img
 
 rootfs.img: ${WORKDIR}/rootfs-stage2.img
 	cp --sparse=always ${WORKDIR}/rootfs-stage2.img rootfs.img
