@@ -1,5 +1,5 @@
-from . import register_type
-from . import MMIO
+from pynq import register_type
+from pynq import MMIO
 
 
 class AxiGPIO:

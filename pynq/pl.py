@@ -996,7 +996,7 @@ def register_hierarchy(constructor):
 
 
 def Overlay(bitfile, class_=None):
-    bitfile_path = os.path.join(general_const.BS_SEARCH_PATH, bitfile)
+    bitfile_path = os.path.join(PYNQ_PATH, bitfile.replace('.bit', ''), bitfile)
     python_path = os.path.splitext(bitfile_path)[0] + '.py'
     if class_:
         return class_(bitfile)

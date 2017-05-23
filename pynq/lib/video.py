@@ -32,7 +32,7 @@ import functools
 import numpy as np
 import time
 
-from pynq import Interrupt, MMIO, PL, Xlnk
+from pynq import Interrupt, MMIO, PL, Xlnk, register_hierarchy
 import pynq.lib._video
 
 
