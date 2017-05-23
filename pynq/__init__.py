@@ -40,7 +40,11 @@ from .pl import PL
 from .pl import PL_SERVER_FILE
 from .pl import Bitstream
 from .pl import Overlay
+from .pl import AttributeOverlay
+from .pl import register_type
+from .pl import register_hierarchy
 from .interrupt import Interrupt
+from .axigpio import AxiGPIO
 from .xlnk import Xlnk
 
 __all__ = ['lib', 'tests']

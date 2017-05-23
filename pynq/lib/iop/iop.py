@@ -36,6 +36,7 @@ from pynq import GPIO
 from pynq import PL
 from pynq import Interrupt
 from pynq.iop import iop_const
+from pynq import register_hierarchy
 
 
 __author__ = "Yun Rock Qu"
@@ -225,10 +226,10 @@ def request_iop(iop_id, mb_program):
     gpio_dict = PL.gpio_dict
     intr_dict = PL.interrupt_pins
 
-    iop = "SEG_mb_bram_ctrl_" + str(iop_id) + "_Mem0"
-    rst_pin = "mb_" + str(iop_id) + "_reset"
-    intr_pin = "iop{0}/dff_en_reset_0/q".format(iop_id)
-    intr_ack_pin = "mb_{0}_intr_ack".format(iop_id)
+    iop = f"{iop_id}/mb_bram_ctrl"
+    rst_pin = f"mb_{iop_id}_reset"
+    intr_pin = "{0}/dff_en_reset_0/q".format(iop_id)
+    intr_ack_pin = f"mb_{iop_id}_intr_ack"
 
     ip = [k for k, _ in ip_dict.items()]
     gpio = [k for k, _ in gpio_dict.items()]
@@ -259,3 +260,27 @@ def request_iop(iop_id, mb_program):
         # case 2
         raise LookupError('Another program {} already running on IOP.'
                           .format(ip_state))
+
+
+class UnknownIOP:
+    def __init__(self, name):
+        self.name = name
+
+    def load(self, program, *args, **kwargs):
+        self._program = program(self.name, *args, **kwargs)
+
+    def __getattr__(self, key):
+        return getattr(self._program, key)
+
+
+def iop_hierarchy(name, description):
+    desc = description
+    if 'xilinx.com:ip:axi_bram_ctrl:4.0' in \
+            {d['type'] for d in description.values()}:
+        if (f'mb_{name}_reset' in PL.gpio_dict and
+                f'{name}/intr_req' in PL.interrupt_pins):
+            return UnknownIOP(name)
+    else:
+        return None
+
+register_hierarchy(iop_hierarchy)

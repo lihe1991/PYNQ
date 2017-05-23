@@ -1068,3 +1068,23 @@ class HDMIOut:
 
         """
         await self._vdma.writechannel.writeframe_async(frame)
+
+class HDMIWrapper:
+    def __init__(self, name):
+        self.name = name
+
+    def create_capture(self, *args, **kwargs):
+        return HDMI('in', *args, hierarchy=self.name, **kwargs)
+
+    def create_display(self, *args, **kwargs):
+        return HDMI('out', *args, hierarchy=self.name, **kwargs)
+
+def create_hdmi(name, description):
+    if ('axi_vdma' in description and
+            'vtc_in' in description and
+            'vtc_out' in description):
+         return HDMIWrapper(name)
+    return None
+
+
+register_hierarchy(create_hdmi)
