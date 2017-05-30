@@ -728,6 +728,7 @@ class PixelPacker:
         self._mmio = MMIO(description['phys_addr'], 256)
         self._bpp = 24
         self._mmio.write(0x10, 0)
+        self._resample = False
 
     @property
     def bits_per_pixel(self):
@@ -738,6 +739,7 @@ class PixelPacker:
 
         Mode   |Pack                        |Unpack
         8  bpp |Keep only the first channel |Pad other channels with 0
+        16 bpp |Dependent on resample       |Dependent on resample
         24 bpp |No change                   |No change
         32 bpp |Pad channel 4 with 0        |Discard channel 4
 
@@ -749,6 +751,8 @@ class PixelPacker:
             return 32
         elif mode == 2:
             return 8
+        elif mode <= 4:
+            return 16
 
     @bits_per_pixel.setter
     def bits_per_pixel(self, value):
@@ -758,10 +762,33 @@ class PixelPacker:
             mode = 1
         elif value == 8:
             mode = 2
+        elif value == 16:
+            if self._resample:
+                mode = 4
+            else:
+                mode = 3
         else:
-            raise ValueError("Bits per pixel must be 8, 24 or 32")
+            raise ValueError("Bits per pixel must be 8, 16, 24 or 32")
         self._bpp = value
         self._mmio.write(0x10, mode)
+
+    @property
+    def resample(self):
+        """Perform chroma resampling in 16 bpp mode
+
+        Boolean property that only affects 16 bpp mode. If True then
+        the two chroma channels are multiplexed on to the second output
+        pixel, otherwise only the first and second channels are transferred
+        and the third is discarded
+        """
+        return self._resample
+
+    @resample.setter
+    def resample(self, value):
+        self._resample = value
+        # Make sure the mode is updated
+        if self.bits_per_pixel == 16:
+            self.bits_per_pixel = 16
 
 
 COLOR_IN_BGR = [1, 0, 0,
