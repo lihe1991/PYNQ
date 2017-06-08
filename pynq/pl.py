@@ -151,12 +151,12 @@ class _TCL:
                            "xczu": "pl_ps_irq0"}
         family_gpio_dict = {"xc7z": "GPIO_O",
                             "xczu": "emio_gpio_o"}
-        family_clk_dict = {"xc7z": "GPIO_O",
-                           "xczu": "emio_gpio_o"}
         hier_use_pat = "create_hier_cell"
         hier_proc_def_pat = f"proc {hier_use_pat}"
+        hier_def_regex = "create_hier_cell_(?P<name>[^ ]*)"
         hier_proc_end_pat = "}\n"
-        hier_regex = "create_hier_cell_(?P<name>[^ ]*)"
+        hier_use_regex = ("create_hier_cell_(?P<name>[^ ]*) ([^ ].*) " +
+                          "(?P<rename>[^ ]*)\n")
 
         config_ip_pat = "CONFIG."
         config_regex = "CONFIG.(?P<key>.+?) \{(?P<value>.+?)\}"
@@ -259,7 +259,7 @@ class _TCL:
 
                 # Match hierarchical cell definition
                 elif hier_proc_def_pat in line:
-                    m = re.search(hier_regex, line)
+                    m = re.search(hier_def_regex, line)
                     hier_name = m.group("name")
                     current_hier = hier_name
                     hier_dict[current_hier] = dict()
@@ -269,10 +269,18 @@ class _TCL:
 
                 # Match hierarchical cell use/instantiation
                 elif hier_use_pat in line:
-                    m = re.search(hier_regex, line)
-                    sub_hier = m.group("name")
-                    sub_path = current_hier + '/' + sub_hier
-                    hier_dict[sub_path] = deepcopy(hier_dict[sub_hier])
+                    m = re.search(hier_use_regex, line)
+                    sub_hier_name = m.group("name")
+                    sub_hier_rename = m.group("rename")
+                    sub_path_rename = current_hier + '/' + sub_hier_rename
+                    to_add = dict()
+                    for i in hier_dict:
+                        if (i.startswith(sub_hier_name) and
+                                i.lstrip(sub_hier_name).startswith('/')) or \
+                                (i == sub_hier_name):
+                            sub_path_rename += i.lstrip(sub_hier_name)
+                            to_add[sub_path_rename] = deepcopy(hier_dict[i])
+                    hier_dict.update(to_add)
 
                 # Matching IP cells in root design
                 elif ip_pat in line:
