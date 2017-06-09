@@ -31,7 +31,6 @@ __author__ = "Yun Rock Qu"
 __copyright__ = "Copyright 2016, Xilinx"
 __email__ = "pynq_support@xilinx.com"
 
-
 from .gpio import GPIO
 from .mmio import MMIO
 from .ps import Register
@@ -43,6 +42,8 @@ from .pl import Overlay
 from .pl import AttributeOverlay
 from .pl import register_type
 from .pl import register_hierarchy
+from .ps import Register
+from .ps import Clocks
 from .interrupt import Interrupt
 from .xlnk import Xlnk
 
