@@ -93,12 +93,15 @@ class HDMIInFrontend:
 
     """
 
-    def __init__(self, vtc_description, gpio_description, init_timeout=10):
+    def __init__(self, hierarchy, init_timeout=10):
+        ip_dict = PL.ip_dict
+        gpio_description = ip_dict[f'{hierarchy}/axi_gpio_hdmiin']
         gpio_dict = {
             'BASEADDR': gpio_description['phys_addr'],
             'INTERRUPT_PRESENT': 1,
             'IS_DUAL': 1,
         }
+        vtc_description = ip_dict[f'{hierarchy}/vtc_in']
         vtc_capture_addr = vtc_description['phys_addr']
         self._capture = pynq.lib._video._capture(gpio_dict,
                                                  vtc_capture_addr,
@@ -152,7 +155,7 @@ class HDMIOutFrontend:
 
     """
 
-    def __init__(self, vtc_description, clock_description):
+    def __init__(self, hierarchy):
         """Create the HDMI output front end
 
         Parameters
@@ -163,6 +166,9 @@ class HDMIOutFrontend:
             The IP dictionary entry for the clock generator to use
 
         """
+        ip_dict = PL.ip_dict
+        vtc_description = ip_dict[f'{hierarchy}/vtc_out']
+        clock_description = ip_dict[f'{hierarchy}/axi_dynclk']
         vtc_capture_addr = vtc_description['phys_addr']
         clock_addr = clock_description['phys_addr']
         self._display = pynq.lib._video._display(vtc_capture_addr,
@@ -273,10 +279,12 @@ class AxiVDMA:
 
         """
 
-        def __init__(self, parent, offset, length):
-            self._frames = [None] * length
+        def __init__(self, parent, offset, count):
+            self._frames = [None] * count
             self._mmio = parent._mmio
             self._offset = offset
+            self._slaves = set()
+            self.count = count
             self.reload = parent.reload
 
         def __getitem__(self, index):
@@ -285,6 +293,9 @@ class AxiVDMA:
 
         def takeownership(self, index):
             self._frames[index] = None
+
+        def __len__(self):
+            return self.count
 
         def __setitem__(self, index, frame):
             if self._frames[index] is not None:
@@ -296,6 +307,19 @@ class AxiVDMA:
             else:
                 self._mmio.write(self._offset + 4 * index, 0)
             self.reload()
+            for s in self._slaves:
+                s[index] = frame
+                s.takeownership(index)
+
+        def addslave(self, slave):
+            self._slaves.add(slave)
+            for i in range(len(self._frames)):
+                slave[i] = self[i]
+                slave.takeownership(i)
+            slave.reload()
+
+        def removeslave(self, slave):
+            self._slaves.remove(slave)
 
     class S2MMChannel:
         """Read channel of the Video DMA
@@ -311,21 +335,17 @@ class AxiVDMA:
 
         def __init__(self, parent, interrupt):
             self._mmio = parent._mmio
-            self._frames = AxiVDMA._FrameList(self, 0xAC, 3)
+            self._frames = AxiVDMA._FrameList(self, 0xAC, parent.framecount)
             self._interrupt = Interrupt(interrupt)
             self._sinkchannel = None
             self._mode = None
 
         def _readframe_internal(self):
-            previous_frame = (self.desiredframe + 2) % 3
-            next_frame = (self.desiredframe + 1) % 3
+            nextframe = self._cache.getframe()
+            previous_frame = (self.activeframe + 1) % len(self._frames)
             captured = self._frames[previous_frame]
             self._frames.takeownership(previous_frame)
-            self._frames[next_frame] = self._cache.getframe()
-            self.desiredframe = next_frame
-            if self._sinkchannel:
-                self._sinkchannel.sourcechannel = self
-                self._sinkchannel.setframe(self._frames[next_frame])
+            self._frames[previous_frame] = nextframe
             return captured
 
         def readframe(self):
@@ -363,7 +383,10 @@ class AxiVDMA:
         def activeframe(self):
             """The frame index currently being processed by the DMA
 
+            This process requires clearing any error bits in the DMA channel
+
             """
+            self._mmio.write(0x34, 0x4090)
             return (self._mmio.read(0x28) >> 24) & 0x1F
 
         @property
@@ -375,8 +398,8 @@ class AxiVDMA:
 
         @desiredframe.setter
         def desiredframe(self, frame_number):
-            if frame_number < 0 or frame_number >= 3:
-                raise ValueError("Frame number should be 0, 1 or 2")
+            if frame_number < 0 or frame_number >= len(self._frames):
+                raise ValueError("Invalid frame index")
             register_value = self._mmio.read(0x28)
             mask = ~(0x1F << 8)
             register_value &= mask
@@ -405,6 +428,22 @@ class AxiVDMA:
             """
             return (self._mmio.read(0x34) & 0x1) == 0
 
+        @property
+        def parked(self):
+            """Is the channel parked or running in circular buffer mode
+
+            """
+            return self._mmio.read(0x30) & 0x2 == 0
+
+        @parked.setter
+        def parked(self, value):
+            register = self._mmio.read(0x30)
+            if value:
+               register &= ~0x2
+            else:
+               register |= 0x2
+            self._mmio.write(0x30, register)
+
         def start(self):
             """Start the DMA. The mode must be set prior to this being called
 
@@ -413,13 +452,12 @@ class AxiVDMA:
                 raise RuntimeError("Video mode not set, channel not started")
             self.desiredframe = 0
             self._cache = _FrameCache(self._mode)
-            self._frames[0] = self._cache.getframe()
-            self._frames[1] = self._cache.getframe()
-            self._frames[2] = self._cache.getframe()
+            for i in range(len(self._frames)):
+                self._frames[i] = self._cache.getframe()
 
             self._writemode()
             self.reload()
-            self._mmio.write(0x30, 0x00011081)
+            self._mmio.write(0x30, 0x00011083)
             while not self.running:
                 pass
             self.reload()
@@ -434,7 +472,7 @@ class AxiVDMA:
             self._mmio.write(0x30, 0x00011080)
             while self.running:
                 pass
-            for i in range(3):
+            for i in range(len(self._frames)):
                 self._frames[i] = None
             if hasattr(self, '_cache'):
                 self._cache.clear()
@@ -473,11 +511,15 @@ class AxiVDMA:
 
             """
             if self._sinkchannel:
+                self._frames.removeslave(self._sinkchannel._frames)
+                self._sinkchannel.parked = True
                 self._sinkchannel.sourcechannel = None
             self._sinkchannel = channel
             if self._sinkchannel:
+                self._frames.addslave(self._sinkchannel._frames)
+                self._sinkchannel.parked = False
+                self._sinkchannel.framedelay = 1
                 self._sinkchannel.sourcechannel = self
-                self._sinkchannel.setframe(self._frames[self.desiredframe])
 
     class MM2SChannel:
         """DMA channel from memory to a video output.
@@ -493,7 +535,7 @@ class AxiVDMA:
 
         def __init__(self, parent, interrupt):
             self._mmio = parent._mmio
-            self._frames = AxiVDMA._FrameList(self, 0x5C, 3)
+            self._frames = AxiVDMA._FrameList(self, 0x5C, parent.framecount)
             self._interrupt = Interrupt(interrupt)
             self._mode = None
             self.sourcechannel = None
@@ -509,7 +551,7 @@ class AxiVDMA:
             self._frames[0] = self._cache.getframe()
             self._writemode()
             self.reload()
-            self._mmio.write(0x00, 0x00011081)
+            self._mmio.write(0x00, 0x00011089)
             while not self.running:
                 pass
             self.reload()
@@ -523,7 +565,7 @@ class AxiVDMA:
             self._mmio.write(0x00, 0x00011080)
             while self.running:
                 pass
-            for i in range(3):
+            for i in range(len(self._frames)):
                 self._frames[i] = None
             if hasattr(self, '_cache'):
                 self._cache.clear()
@@ -541,7 +583,7 @@ class AxiVDMA:
             if self.sourcechannel:
                 self.sourcechannel.tie(None)
 
-            next_frame = (self.desiredframe + 1) % 3
+            next_frame = (self.desiredframe + 1) % len(self._frames)
             self._frames[next_frame] = frame
             self.desiredframe = next_frame
 
@@ -580,7 +622,10 @@ class AxiVDMA:
         def _writemode(self):
             self._mmio.write(0x54, self._mode.width *
                              self._mode.bytes_per_pixel)
-            self._mmio.write(0x58, self._mode.stride)
+            register = self._mmio.read(0x58)
+            register &= (0xF << 24)
+            register |= self._mode.stride
+            self._mmio.write(0x58, register)
 
         def reload(self):
             """Reload the configuration of the DMA. Should only be called
@@ -605,6 +650,7 @@ class AxiVDMA:
 
         @property
         def activeframe(self):
+            self._mmio.write(0x04, 0x4090)
             return (self._mmio.read(0x28) >> 16) & 0x1F
 
         @property
@@ -613,8 +659,8 @@ class AxiVDMA:
 
         @desiredframe.setter
         def desiredframe(self, frame_number):
-            if frame_number < 0 or frame_number >= 3:
-                raise ValueError("Frame number should be 0, 1 or 2")
+            if frame_number < 0 or frame_number >= len(self._frames):
+                raise ValueError("Invalid Frame Index")
             register_value = self._mmio.read(0x28)
             mask = ~0x1F
             register_value &= mask
@@ -640,7 +686,36 @@ class AxiVDMA:
                 self.stop()
             self._mode = value
 
-    def __init__(self, name):
+        @property
+        def parked(self):
+            """Is the channel parked or running in circular buffer mode
+
+            """
+            return self._mmio.read(0x00) & 0x2 == 0
+
+        @parked.setter
+        def parked(self, value):
+            register = self._mmio.read(0x00)
+            if value:
+               self.desiredframe = self.activeframe
+               register &= ~0x2
+            else:
+               register |= 0x2
+            self._mmio.write(0x00, register)
+
+        @property
+        def framedelay(self):
+            register = self._mmio.read(0x58)
+            return register >> 24
+
+        @framedelay.setter
+        def framedelay(self, value):
+            register = self._mmio.read(0x58)
+            register &= 0xFFFF
+            register |= value << 24
+            self._mmio.write(0x58, register)
+
+    def __init__(self, name, framecount=4):
         """Create a new instance of the AXI Video DMA driver
 
         Parameters
@@ -651,6 +726,7 @@ class AxiVDMA:
         """
         description = PL.ip_dict[name]
         self._mmio = MMIO(description['phys_addr'], 256)
+        self.framecount = framecount
         self.readchannel = AxiVDMA.S2MMChannel(self, f"{name}/s2mm_introut")
         self.writechannel = AxiVDMA.MM2SChannel(self, f"{name}/mm2s_introut")
 
@@ -848,12 +924,10 @@ class HDMIIn:
         ip_dict = PL.ip_dict
         self._vdma = AxiVDMA(f'{hierarchy}/axi_vdma')
         self._color = ColorConverter(
-            ip_dict[f'{hierarchy}/color_convert_in'])
+            ip_dict[f'{hierarchy}/hdmi_in/color_convert'])
         self._pixel = PixelPacker(
-            ip_dict[f'{hierarchy}/pixel_pack'])
-        self._hdmi = HDMIInFrontend(
-            ip_dict[f'{hierarchy}/vtc_in'],
-            ip_dict[f'{hierarchy}/axi_gpio_hdmiin'])
+            ip_dict[f'{hierarchy}/hdmi_in/pixel_pack'])
+        self._hdmi = HDMIInFrontend(f'{hierarchy}/hdmi_in/frontend')
 
     def configure(self, pixelformat=PIXEL_BGR):
         """Configure the pipeline to use the specified pixel format.
@@ -965,12 +1039,10 @@ class HDMIOut:
         ip_dict = PL.ip_dict
         self._vdma = AxiVDMA(f'{hierarchy}/axi_vdma')
         self._color = ColorConverter(
-            ip_dict[f'{hierarchy}/color_convert_out'])
+            ip_dict[f'{hierarchy}/hdmi_out/color_convert_out'])
         self._pixel = PixelPacker(
-            ip_dict[f'{hierarchy}/pixel_unpack'])
-        self._hdmi = HDMIOutFrontend(
-            ip_dict[f'{hierarchy}/vtc_out'],
-            ip_dict[f'{hierarchy}/axi_dynclk'])
+            ip_dict[f'{hierarchy}/hdmi_out/pixel_unpack'])
+        self._hdmi = HDMIOutFrontend(f'{hierarchy}/hdmi_out/frontend')
 
     def configure(self, mode, pixelformat=None):
         """Configure the pipeline to use the specified pixel format and size.
