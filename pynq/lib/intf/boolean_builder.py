@@ -33,7 +33,7 @@ import numpy as np
 from pyeda.inter import exprvar
 from pyeda.inter import expr2truthtable
 from pynq import Register
-from .intf_const import INTF_MICROBLAZE_BIN, PYNQZ1_DIO_SPECIFICATION, \
+from . import INTF_MICROBLAZE_BIN, PYNQZ1_DIO_SPECIFICATION, \
     CMD_READ_CFG_DIRECTION, MAILBOX_OFFSET, CMD_CONFIG_CFG, \
     CMD_ARM_CFG, CMD_RUN, CMD_STOP, IOSWITCH_BG_SELECT
 from .intf import request_intf, _INTF

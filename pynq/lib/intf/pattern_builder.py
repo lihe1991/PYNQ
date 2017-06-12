@@ -33,7 +33,7 @@ __email__ = "pynq_support@xilinx.com"
 
 import re
 import numpy as np
-from .intf_const import INTF_MICROBLAZE_BIN, IOSWITCH_PG_SELECT, \
+from . import INTF_MICROBLAZE_BIN, IOSWITCH_PG_SELECT, \
     PYNQZ1_DIO_SPECIFICATION, CMD_CONFIG_PG, CMD_ARM_PG, \
     CMD_RUN, CMD_STOP
 from .intf import request_intf, _INTF

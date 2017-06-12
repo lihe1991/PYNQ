@@ -34,6 +34,7 @@ import math
 from . import MAILBOX_OFFSET
 from . import MAILBOX_PY2IOP_CMD_OFFSET
 from . import BIN_LOCATION
+from pynq.lib import PynqMicroblaze
 
 
 __author__ = "Yun Rock Qu"

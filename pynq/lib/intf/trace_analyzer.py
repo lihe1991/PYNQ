@@ -30,7 +30,7 @@
 import os
 import re
 import numpy as np
-from .intf_const import INTF_MICROBLAZE_BIN, CMD_CONFIG_TRACE, \
+from . import INTF_MICROBLAZE_BIN, CMD_CONFIG_TRACE, \
     BYTE_WIDTH_TO_CTYPE, CMD_ARM_TRACE, BYTE_WIDTH_TO_NPTYPE
 from .intf import request_intf, _INTF
 

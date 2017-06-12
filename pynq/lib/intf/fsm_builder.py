@@ -33,14 +33,14 @@ from math import ceil, log
 import numpy as np
 import pygraphviz as pgv
 from IPython.display import Image, display
-from .intf_const import FSM_BRAM_ADDR_WIDTH
-from .intf_const import FSM_MAX_STATE_BITS
-from .intf_const import FSM_MAX_INPUT_BITS
-from .intf_const import FSM_MAX_STATE_INPUT_BITS
-from .intf_const import FSM_MAX_OUTPUT_BITS
-from .intf_const import INTF_MICROBLAZE_BIN
-from .intf_const import PYNQZ1_DIO_SPECIFICATION
-from .intf_const import CMD_CONFIG_SMG, CMD_ARM_SMG, CMD_RUN, \
+from . import FSM_BRAM_ADDR_WIDTH
+from . import FSM_MAX_STATE_BITS
+from . import FSM_MAX_INPUT_BITS
+from . import FSM_MAX_STATE_INPUT_BITS
+from . import FSM_MAX_OUTPUT_BITS
+from . import INTF_MICROBLAZE_BIN
+from . import PYNQZ1_DIO_SPECIFICATION
+from . import CMD_CONFIG_SMG, CMD_ARM_SMG, CMD_RUN, \
     IOSWITCH_SMG_SELECT, CMD_STOP
 from .intf import request_intf, _INTF
 from .trace_analyzer import TraceAnalyzer

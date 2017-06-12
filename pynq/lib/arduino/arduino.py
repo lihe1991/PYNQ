@@ -31,6 +31,7 @@ import asyncio
 import os
 import sys
 import math
+from pynq.lib import PynqMicroblaze
 from . import MAILBOX_OFFSET
 from . import MAILBOX_PY2IOP_CMD_OFFSET
 from . import BIN_LOCATION

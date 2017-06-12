@@ -44,7 +44,6 @@ from .button import Button
 from .axigpio import AxiGPIO
 from .pmod import *
 from .arduino import *
-from .intf import *
 
 
 __author__ = "Graham Schelle"

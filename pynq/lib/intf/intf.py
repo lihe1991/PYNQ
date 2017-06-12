@@ -34,6 +34,7 @@ from pynq import PL
 from pynq import Clocks
 from pynq import Xlnk
 from pynq import Register
+from pynq.lib import PynqMicroblaze
 from . import MAILBOX_OFFSET
 from . import MAILBOX_PY2DIF_CMD_OFFSET
 from . import BIN_LOCATION
