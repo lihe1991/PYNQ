@@ -11,7 +11,11 @@ SCRIPT_DIR := $(CURDIR)/scripts
 
 RELEASE ?= v1.4-Pynq-Z1
 
+-include ${WORKDIR}/release_info
+BUILD_RELEASE ?= ${RELEASE}
+
 all: checkenv rootfs.img
+
 
 include releases/${RELEASE}.config
 include boot_configs/${BOOT_CONFIG}/config
@@ -89,7 +93,11 @@ ${WORKDIR}/config_diff:
 		cp -r patchsets/$$set/* $@; \
 	done
 
-checkenv:
+${WORKDIR}/release_info: ${WORKDIR}
+	echo "BUILD_RELEASE=${RELEASE}" > $@
+
+checkenv: ${WORKDIR}/release_info
+ifeq "${RELEASE}" "${BUILD_RELEASE}"
 	which dtc
 	which hsi
 	which vivado
@@ -99,5 +107,16 @@ checkenv:
 	${QEMU_EXE} -version | fgrep 2.8.0
 	vivado -version | fgrep 2016.1
 	sudo -n true
+	bash ${SCRIPT_DIR}/check_mounts.sh
+else
+	echo "Release ${BUILD_RELEASE} currently in build area, please run make clean RELEASE=${BUILD_RELEASE} to clean the workspace before building a different release"
+	exit 1
+endif
 
-.PHONY: checkenv
+clean: checkenv
+	-rm -rf .build rootfs.img
+
+distclean: clean
+	-rm -rf .ccache
+
+.PHONY: checkenv clean distclean
