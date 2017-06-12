@@ -22,6 +22,8 @@ struct wide_stream {
 #define V_24 0
 #define V_32 1
 #define V_8 2
+#define V_16 3
+#define V_16C 4
 
 void pixel_pack(narrow_stream* in_stream, wide_stream* out_stream, int mode, ap_uint<8> alpha) {
 #pragma HLS INTERFACE ap_ctrl_none port=return
@@ -88,6 +90,47 @@ void pixel_pack(narrow_stream* in_stream, wide_stream* out_stream, int mode, ap_
 			out_stream->user = user;
 			out_stream->last = last;
 			out_stream->data = data;
+			++out_stream;
+		}
+		break;
+	case V_16:
+		while (!last) {
+#pragma HLS pipeline II=2
+			bool user = false;
+			ap_uint<32> data;
+			for (int i = 0; i < 2; ++i) {
+				user |= in_stream->user;
+				last = in_stream->last;
+				data.range(i*16 + 15, i*16) = in_stream->data.range(16,0);
+				++in_stream;
+			}
+			out_stream->user = user;
+			out_stream->last = last;
+			out_stream->data = data;
+			++out_stream;
+		}
+		break;
+	case V_16C:
+		while (!last) {
+#pragma HLS pipeline II=2
+			bool user = false;
+			ap_uint<48> data;
+			for (int i = 0; i < 2; ++i) {
+				user |= in_stream->user;
+				last = in_stream->last;
+				data.range(i*24 + 23, i*24) = in_stream->data;
+				++in_stream;
+			}
+			ap_uint<32> out_data;
+			ap_uint<9> out_c1 = ap_uint<9>(data.range(15,8)) + ap_uint<9>(data.range(39,32));
+			ap_uint<9> out_c2 = ap_uint<9>(data.range(23,16)) + ap_uint<9>(data.range(47,40));
+			out_data.range(7,0) = data.range(7,0);
+			out_data.range(15,8) = out_c1.range(8,1);
+			out_data.range(23,16) = data.range(31,24);
+			out_data.range(31,24) = out_c2.range(8,1);
+			out_stream->user = user;
+			out_stream->last = last;
+			out_stream->data = out_data;
 			++out_stream;
 		}
 		break;
