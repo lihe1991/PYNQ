@@ -979,28 +979,36 @@ def _create_ip(desc):
 
 class _IPMap:
 
-    def __init__(self, desc):
+    def __init__(self, path, desc):
         self._hierarchies = {k.partition('/')[0]
                              for k in desc.keys() if k.count('/')}
         self._ipnames = {k for k in desc.keys() if k.count('/') == 0}
         self._description = desc
+        self._path = path
 
     def __getattr__(self, key):
+        if self._path:
+            fullpath = f"{self._path}/{key}"
+        else:
+            fullpath = key
         if key in self._hierarchies:
             subdesc = {k.partition('/')[2]: v
                        for k, v in self._description.items()
                        if k.startswith(f'{key}/')}
             ret = None
             for hip in _hierarchy_drivers:
-                ret = hip(key, subdesc)
+                ret = hip(fullpath, subdesc)
                 if ret:
                     setattr(self, key, ret)
                     return ret
-            ret = _IPMap(subdesc)
+            ret = _IPMap(fullpath, subdesc)
             setattr(self, key, ret)
             return ret
         elif key in self._ipnames:
-            ret = _create_ip(self._description[key])
+            ip_description = self._description[key]
+            if 'fullpath' not in ip_description:
+                ip_description['fullpath'] = fullpath
+            ret = _create_ip(ip_description)
             setattr(self, key, ret)
             return ret
         else:
@@ -1015,6 +1023,18 @@ class _IPMap:
                 [i for i in self._ipnames])
 
 
+class Hierarchy(_IPMap):
+    def __init__(self, path, description=None):
+        if description is None:
+            ip_dict = PL.ip_dict
+            filtered_dict = {k.replace(f'{path}/','',1): v
+                             for k, v in ip_dict.items()
+                             if k.startswith(f'{path}/')}
+            description = filtered_dict
+        self.description = description
+        super().__init__(path, description)
+
+
 class AttributeOverlay(_Overlay):
     """An Overlay exposing the IP in the PL as attributes
 
@@ -1022,7 +1042,7 @@ class AttributeOverlay(_Overlay):
 
     def __init__(self, bitfile):
         super().__init__(bitfile)
-        self._ip_map = _IPMap(self.ip_dict)
+        self._ip_map = _IPMap("", self.ip_dict)
         self.download()
 
     def __getattr__(self, key):

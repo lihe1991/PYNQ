@@ -40,6 +40,7 @@ from .pl import PL_SERVER_FILE
 from .pl import Bitstream
 from .pl import Overlay
 from .pl import AttributeOverlay
+from .pl import Hierarchy
 from .pl import register_type
 from .pl import register_hierarchy
 from .ps import Register

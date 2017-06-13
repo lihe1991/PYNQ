@@ -479,8 +479,8 @@ proc create_hier_cell_hdmi_out { parentCell nameHier } {
   # Create instance: axis_register_slice_0, and set properties
   set axis_register_slice_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_register_slice:1.1 axis_register_slice_0 ]
 
-  # Create instance: color_convert_out, and set properties
-  set color_convert_out [ create_bd_cell -type ip -vlnv xilinx.com:hls:color_convert:1.0 color_convert_out ]
+  # Create instance: color_convert, and set properties
+  set color_convert [ create_bd_cell -type ip -vlnv xilinx.com:hls:color_convert:1.0 color_convert ]
 
   # Create instance: frontend
   create_hier_cell_frontend_1 $hier_obj frontend
@@ -491,19 +491,19 @@ proc create_hier_cell_hdmi_out { parentCell nameHier } {
   # Create interface connections
   connect_bd_intf_net -intf_net Conn1 [get_bd_intf_pins TMDS] [get_bd_intf_pins frontend/TMDS]
   connect_bd_intf_net -intf_net Conn2 [get_bd_intf_pins ctrl] [get_bd_intf_pins frontend/ctrl]
-  connect_bd_intf_net -intf_net Conn7 [get_bd_intf_pins s_axi_AXILiteS1] [get_bd_intf_pins color_convert_out/s_axi_AXILiteS]
+  connect_bd_intf_net -intf_net Conn7 [get_bd_intf_pins s_axi_AXILiteS1] [get_bd_intf_pins color_convert/s_axi_AXILiteS]
   connect_bd_intf_net -intf_net Conn8 [get_bd_intf_pins s_axi_AXILiteS] [get_bd_intf_pins pixel_unpack/s_axi_AXILiteS]
   connect_bd_intf_net -intf_net axi_vdma_0_M_AXIS_MM2S [get_bd_intf_pins in_stream] [get_bd_intf_pins pixel_unpack/in_stream]
-  connect_bd_intf_net -intf_net axis_register_slice_0_M_AXIS [get_bd_intf_pins axis_register_slice_0/M_AXIS] [get_bd_intf_pins color_convert_out/in_data]
+  connect_bd_intf_net -intf_net axis_register_slice_0_M_AXIS [get_bd_intf_pins axis_register_slice_0/M_AXIS] [get_bd_intf_pins color_convert/in_data]
   connect_bd_intf_net -intf_net pixel_unpack_out_stream [get_bd_intf_pins axis_register_slice_0/S_AXIS] [get_bd_intf_pins pixel_unpack/out_stream]
   connect_bd_intf_net -intf_net processing_system7_0_axi_periph_M06_AXI [get_bd_intf_pins S_AXI] [get_bd_intf_pins frontend/S_AXI]
   connect_bd_intf_net -intf_net processing_system7_0_axi_periph_M08_AXI [get_bd_intf_pins s00_axi] [get_bd_intf_pins frontend/s00_axi]
-  connect_bd_intf_net -intf_net video_in_1 [get_bd_intf_pins color_convert_out/out_data] [get_bd_intf_pins frontend/video_in]
+  connect_bd_intf_net -intf_net video_in_1 [get_bd_intf_pins color_convert/out_data] [get_bd_intf_pins frontend/video_in]
 
   # Create port connections
-  connect_bd_net -net Net [get_bd_pins control] [get_bd_pins color_convert_out/control] [get_bd_pins frontend/s00_axi_aclk] [get_bd_pins pixel_unpack/control]
-  connect_bd_net -net Net1 [get_bd_pins ap_rst_n_control] [get_bd_pins color_convert_out/ap_rst_n_control] [get_bd_pins frontend/s_axi_aresetn] [get_bd_pins pixel_unpack/ap_rst_n_control]
-  connect_bd_net -net aclk_1 [get_bd_pins ap_clk] [get_bd_pins axis_register_slice_0/aclk] [get_bd_pins color_convert_out/ap_clk] [get_bd_pins frontend/aclk] [get_bd_pins pixel_unpack/ap_clk]
+  connect_bd_net -net Net [get_bd_pins control] [get_bd_pins color_convert/control] [get_bd_pins frontend/s00_axi_aclk] [get_bd_pins pixel_unpack/control]
+  connect_bd_net -net Net1 [get_bd_pins ap_rst_n_control] [get_bd_pins color_convert/ap_rst_n_control] [get_bd_pins frontend/s_axi_aresetn] [get_bd_pins pixel_unpack/ap_rst_n_control]
+  connect_bd_net -net aclk_1 [get_bd_pins ap_clk] [get_bd_pins axis_register_slice_0/aclk] [get_bd_pins color_convert/ap_clk] [get_bd_pins frontend/aclk] [get_bd_pins pixel_unpack/ap_clk]
   connect_bd_net -net aux_reset_in_1 [get_bd_pins aux_reset_in] [get_bd_pins frontend/aux_reset_in]
   connect_bd_net -net ext_reset_in_1 [get_bd_pins ext_reset_in] [get_bd_pins frontend/ext_reset_in]
   connect_bd_net -net frontend_peripheral_aresetn [get_bd_pins peripheral_aresetn] [get_bd_pins frontend/peripheral_aresetn]
@@ -512,7 +512,7 @@ proc create_hier_cell_hdmi_out { parentCell nameHier } {
   connect_bd_net -net hdmi_out_hpd_video_ip2intc_irpt [get_bd_pins ip2intc_irpt] [get_bd_pins frontend/ip2intc_irpt]
   connect_bd_net -net locked [get_bd_pins locked] [get_bd_pins frontend/locked]
   connect_bd_net -net overflow [get_bd_pins overflow] [get_bd_pins frontend/overflow]
-  connect_bd_net -net rst_processing_system7_0_100M_peripheral_aresetn [get_bd_pins ap_rst_n] [get_bd_pins axis_register_slice_0/aresetn] [get_bd_pins color_convert_out/ap_rst_n] [get_bd_pins pixel_unpack/ap_rst_n]
+  connect_bd_net -net rst_processing_system7_0_100M_peripheral_aresetn [get_bd_pins ap_rst_n] [get_bd_pins axis_register_slice_0/aresetn] [get_bd_pins color_convert/ap_rst_n] [get_bd_pins pixel_unpack/ap_rst_n]
   connect_bd_net -net slowest_sync_clk_1 [get_bd_pins slowest_sync_clk] [get_bd_pins frontend/slowest_sync_clk]
   connect_bd_net -net status [get_bd_pins status] [get_bd_pins frontend/status]
   connect_bd_net -net underflow [get_bd_pins underflow] [get_bd_pins frontend/underflow]
@@ -545,7 +545,7 @@ preplace portBus ap_rst_n_control -pg 1 -y 140 -defaultsOSRD
 preplace portBus ap_rst_n -pg 1 -y 100 -defaultsOSRD
 preplace portBus peripheral_reset -pg 1 -y 520 -defaultsOSRD
 preplace portBus gpio_io_o -pg 1 -y 480 -defaultsOSRD
-preplace inst color_convert_out -pg 1 -lvl 3 -y 240 -defaultsOSRD
+preplace inst color_convert -pg 1 -lvl 3 -y 240 -defaultsOSRD
 preplace inst axis_register_slice_0 -pg 1 -lvl 2 -y 90 -defaultsOSRD
 preplace inst frontend -pg 1 -lvl 4 -y 430 -defaultsOSRD
 preplace inst pixel_unpack -pg 1 -lvl 1 -y 90 -defaultsOSRD
@@ -658,7 +658,7 @@ proc create_hier_cell_hdmi_in { parentCell nameHier } {
   connect_bd_intf_net -intf_net Conn6 [get_bd_intf_pins s_axi_AXILiteS] [get_bd_intf_pins color_convert/s_axi_AXILiteS]
   connect_bd_intf_net -intf_net TMDS_1 [get_bd_intf_pins TMDS] [get_bd_intf_pins frontend/TMDS]
   connect_bd_intf_net -intf_net axis_register_slice_0_M_AXIS [get_bd_intf_pins axis_register_slice_0/M_AXIS] [get_bd_intf_pins pixel_pack/in_stream]
-  connect_bd_intf_net -intf_net color_convert_out_data [get_bd_intf_pins axis_register_slice_0/S_AXIS] [get_bd_intf_pins color_convert/out_data]
+  connect_bd_intf_net -intf_net color_convert_data [get_bd_intf_pins axis_register_slice_0/S_AXIS] [get_bd_intf_pins color_convert/out_data]
   connect_bd_intf_net -intf_net frontend_DDC [get_bd_intf_pins DDC] [get_bd_intf_pins frontend/DDC]
   connect_bd_intf_net -intf_net hdmi_in_video_out [get_bd_intf_pins color_convert/in_data] [get_bd_intf_pins frontend/video_out]
   connect_bd_intf_net -intf_net in_pixelformat_M00_AXIS [get_bd_intf_pins out_stream] [get_bd_intf_pins pixel_pack/out_stream]
@@ -713,7 +713,7 @@ preplace netloc frontend_DDC 1 2 1 NJ
 preplace netloc in_pixelformat_M00_AXIS 1 2 1 NJ
 preplace netloc Conn5 1 0 2 NJ 470 NJ
 preplace netloc hdmi_in_video_out 1 0 3 10 270 NJ 270 670
-preplace netloc color_convert_out_data 1 1 1 330
+preplace netloc color_convert_data 1 1 1 330
 preplace netloc Conn6 1 0 1 NJ
 preplace netloc RefClk_1 1 0 2 NJ 210 NJ
 preplace netloc v_tc_1_irq 1 2 1 NJ
@@ -3882,7 +3882,7 @@ CONFIG.C_IS_DUAL {1} \
   create_bd_addr_seg -range 0x00010000 -offset 0x43000000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs video/axi_vdma/S_AXI_LITE/Reg] SEG_axi_vdma_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41210000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs btns_gpio/S_AXI/Reg] SEG_btns_gpio_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C50000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs video/hdmi_in/color_convert/s_axi_AXILiteS/Reg] SEG_color_convert_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C60000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs video/hdmi_out/color_convert_out/s_axi_AXILiteS/Reg] SEG_color_convert_out_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C60000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs video/hdmi_out/color_convert/s_axi_AXILiteS/Reg] SEG_color_convert_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs audio/d_axi_pdm_1/S_AXI/S_AXI_reg] SEG_d_axi_pdm_1_S_AXI_reg
   create_bd_addr_seg -range 0x00010000 -offset 0x41230000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs video/hdmi_out/frontend/hdmi_out_hpd_video/S_AXI/Reg] SEG_hdmi_out_hpd_video_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x40000000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs iop1/mb_bram_ctrl/S_AXI/Mem0] SEG_mb_bram_ctrl_1_Mem0
