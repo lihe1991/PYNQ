@@ -36,6 +36,8 @@ import time
 from pynq import PL
 from pynq import GPIO
 from pynq import MMIO
+from pynq import register_hierarchy_driver
+from pynq import UnknownHierarchy
 
 __author__ = "Benedikt Janssen"
 __copyright__ = "Copyright 2016, Xilinx"
@@ -45,7 +47,7 @@ __email__ = "pynq_support@xilinx.com"
 LIB_SEARCH_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
-class Audio:
+class Audio(UnknownHierarchy):
     """Class to interact with audio controller.
     
     Each audio sample is a 32-bit integer. The audio controller supports only 
@@ -65,7 +67,7 @@ class Audio:
         Sample length of the current buffer content.
         
     """
-    def __init__(self, ip='audio/d_axi_pdm_1',
+    def __init__(self, path, description=None,
                  rst="audio_path_sel"):
         """Return a new Audio object.
         
@@ -79,13 +81,11 @@ class Audio:
             The name of the GPIO pins used as reset for the audio driver.
         
         """
-        if ip not in PL.ip_dict:
-            raise LookupError("No such audio IP in the overlay.")
+        super().__init__(path, description)
         if rst not in PL.gpio_dict:
             raise LookupError("No such reset pin in the overlay.")
 
-        self.mmio = MMIO(PL.ip_dict[ip]['phys_addr'],
-                         PL.ip_dict[ip]['addr_range'])
+        self.mmio = self.d_axi_pdm_1.mmio
         self.gpio = GPIO(GPIO.get_gpio_pin(PL.gpio_dict[rst]['index']), 'out')
         
         self._ffi = cffi.FFI()
@@ -292,3 +292,12 @@ class Audio:
             print("Number of frames:   " + str(pdm_file.getnframes()))
             print("Compression type:   " + str(pdm_file.getcomptype()))
             print("Compression name:   " + str(pdm_file.getcompname()))
+
+    @staticmethod
+    def checkhierarchy(path, description):
+        if 'd_axi_pdm_1' in description:
+            return True
+        return False
+
+
+register_hierarchy_driver(Audio)

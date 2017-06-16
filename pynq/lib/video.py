@@ -33,8 +33,13 @@ import functools
 import numpy as np
 import time
 
-from pynq import Interrupt, MMIO, PL, Xlnk, Hierarchy
-from pynq import register_type, register_hierarchy
+from pynq import Interrupt
+from pynq import UnknownIP
+from pynq import UnknownHierarchy
+from pynq import PL
+from pynq import Xlnk
+from pynq import register_ip_driver
+from pynq import register_hierarchy_driver
 import pynq.lib._video
 
 
@@ -82,7 +87,7 @@ class VideoMode:
                 f"height={self.height} bpp={self.bits_per_pixel}")
 
 
-class HDMIInFrontend(Hierarchy):
+class HDMIInFrontend(UnknownHierarchy):
     """Class for interacting the with HDMI input frontend
 
     This class is used for enabling the HDMI input and retrieving
@@ -95,8 +100,8 @@ class HDMIInFrontend(Hierarchy):
 
     """
 
-    def __init__(self, hierarchy, description=None):
-        super().__init__(hierarchy, description)
+    def __init__(self, path, description=None):
+        super().__init__(path, description)
 
     def start(self, init_timeout=10):
         """Method that blocks until the video mode is
@@ -130,7 +135,7 @@ class HDMIInFrontend(Hierarchy):
         pass
 
     @staticmethod
-    def checkhierarchy(hierarchy, description):
+    def checkhierarchy(path, description):
         return 'vtc_in' in description and 'axi_gpio_hdmiin' in description
 
     @property
@@ -148,7 +153,7 @@ _outputmodes = {
 }
 
 
-class HDMIOutFrontend(Hierarchy):
+class HDMIOutFrontend(UnknownHierarchy):
     """Class for interacting the HDMI output frontend
 
     This class is used for enabling the HDMI output and setting
@@ -163,10 +168,10 @@ class HDMIOutFrontend(Hierarchy):
     """
 
     @staticmethod
-    def checkhierarchy(hierarchy, description):
+    def checkhierarchy(path, description):
         return 'vtc_out' in description and 'axi_dynclk' in description
 
-    def __init__(self, hierarchy, description):
+    def __init__(self, path, description):
         """Create the HDMI output front end
 
         Parameters
@@ -260,7 +265,7 @@ class _FrameCache:
         self._cache.clear()
 
 
-class AxiVDMA:
+class AxiVDMA(UnknownIP):
     """Driver class for the Xilinx VideoDMA IP core
 
     The driver is split into input and output channels are exposed using the
@@ -346,7 +351,7 @@ class AxiVDMA:
         """
 
         def __init__(self, parent, interrupt):
-            self._mmio = parent._mmio
+            self._mmio = parent.mmio
             self._frames = AxiVDMA._FrameList(self, 0xAC, parent.framecount)
             self._interrupt = Interrupt(interrupt)
             self._sinkchannel = None
@@ -561,7 +566,7 @@ class AxiVDMA:
         """
 
         def __init__(self, parent, interrupt):
-            self._mmio = parent._mmio
+            self._mmio = parent.mmio
             self._frames = AxiVDMA._FrameList(self, 0x5C, parent.framecount)
             self._interrupt = Interrupt(interrupt)
             self._mode = None
@@ -751,15 +756,15 @@ class AxiVDMA:
             The name of the IP core to instantiate the driver for
 
         """
-        self._mmio = MMIO(description['phys_addr'], 256)
+        super().__init__(description)
         self.framecount = framecount
         path = description['fullpath']
         self.readchannel = AxiVDMA.S2MMChannel(self, f"{path}/s2mm_introut")
         self.writechannel = AxiVDMA.MM2SChannel(self, f"{path}/mm2s_introut")
 
-register_type('xilinx.com:ip:axi_vdma:6.2', AxiVDMA)
+register_ip_driver('xilinx.com:ip:axi_vdma:6.2', AxiVDMA)
 
-class ColorConverter:
+class ColorConverter(UnknownIP):
     """Driver for the color space converter
 
     The colorspace convert implements a 3x4 matrix for performing arbitrary
@@ -790,7 +795,7 @@ class ColorConverter:
             IP dict entry for the IP core
 
         """
-        self._mmio = MMIO(description['phys_addr'], 256)
+        super().__init__(description)
 
     @property
     def colorspace(self):
@@ -799,19 +804,19 @@ class ColorConverter:
         floats of length 12
 
         """
-        return [self._mmio.read(0x10 + 8 * i) / 256 for i in range(12)]
+        return [self.read(0x10 + 8 * i) / 256 for i in range(12)]
 
     @colorspace.setter
     def colorspace(self, color):
         if len(color) != 12:
             raise ValueError("Wrong number of elements in color specification")
         for i, c in enumerate(color):
-            self._mmio.write(0x10 + 8 * i, int(c * 256))
+            self.write(0x10 + 8 * i, int(c * 256))
 
 
-register_type('xilinx.com:hls:color_convert:1.0', ColorConverter)
+register_ip_driver('xilinx.com:hls:color_convert:1.0', ColorConverter)
 
-class PixelPacker:
+class PixelPacker(UnknownIP):
     """Driver for the pixel format convert
 
     Changes the number of bits per pixel in the video stream. The stream
@@ -831,7 +836,7 @@ class PixelPacker:
             IP dict entry for the IP core
 
         """
-        self._mmio = MMIO(description['phys_addr'], 256)
+        super().__init__(self, description)
         self._bpp = 24
         self._mmio.write(0x10, 0)
         self._resample = False
@@ -850,7 +855,7 @@ class PixelPacker:
         32 bpp |Pad channel 4 with 0        |Discard channel 4
 
         """
-        mode = self._mmio.read(0x10)
+        mode = self.read(0x10)
         if mode == 0:
             return 24
         elif mode == 1:
@@ -876,7 +881,7 @@ class PixelPacker:
         else:
             raise ValueError("Bits per pixel must be 8, 16, 24 or 32")
         self._bpp = value
-        self._mmio.write(0x10, mode)
+        self.write(0x10, mode)
 
     @property
     def resample(self):
@@ -896,8 +901,8 @@ class PixelPacker:
         if self.bits_per_pixel == 16:
             self.bits_per_pixel = 16
 
-register_type('xilinx.com:hls:pixel_pack:1.0', PixelPacker)
-register_type('xilinx.com:hls:pixel_unpack:1.0', PixelPacker)
+register_ip_driver('xilinx.com:hls:pixel_pack:1.0', PixelPacker)
+register_ip_driver('xilinx.com:hls:pixel_unpack:1.0', PixelPacker)
 
 
 COLOR_IN_BGR = [1, 0, 0,
@@ -969,7 +974,7 @@ def _subhierarchy(key, description):
     return filtered_dict
 
 
-class HDMIIn(Hierarchy):
+class HDMIIn(UnknownHierarchy):
     """Wrapper for the input video pipeline of the Pynq-Z1 base overlay
 
     This wrapper assumes the following pipeline structure and naming
@@ -1108,7 +1113,7 @@ class HDMIIn(Hierarchy):
         self._vdma.readchannel.tie(output._vdma.writechannel)
 
 
-class HDMIOut(Hierarchy):
+class HDMIOut(UnknownHierarchy):
     """Wrapper for the output video pipeline of the Pynq-Z1 base overlay
 
     This wrapper assumes the following pipeline structure and naming
@@ -1255,17 +1260,17 @@ class HDMIOut(Hierarchy):
         """
         await self._vdma.writechannel.writeframe_async(frame)
 
-class HDMIWrapper(Hierarchy):
+class HDMIWrapper(UnknownHierarchy):
     @staticmethod
-    def checkhierarchy(name, description):
+    def checkhierarchy(path, description):
         in_dict = _subhierarchy('hdmi_in', description)
         out_dict = _subhierarchy('hdmi_out', description)
         return ('axi_vdma' in description and
-                HDMIIn.checkhierarchy(f"{name}/hdmi_in", in_dict) and
-                HDMIOut.checkhierarchy(f"{name}/hdmi_out", out_dict))
+                HDMIIn.checkhierarchy(f"{path}/hdmi_in", in_dict) and
+                HDMIOut.checkhierarchy(f"{path}/hdmi_out", out_dict))
 
-    def __init__(self, name, description):
-        super().__init__(name, description)
+    def __init__(self, path, description):
+        super().__init__(path, description)
         self.name = name
         in_dict = _subhierarchy('hdmi_in', description)
         out_dict = _subhierarchy('hdmi_out', description)
@@ -1273,24 +1278,7 @@ class HDMIWrapper(Hierarchy):
         self.hdmi_out = HDMIOut(name, out_dict, self.axi_vdma)
 
 
-def create_hdmiinfrontend(name, description):
-    if HDMIInFrontend.checkhierarchy(name, description):
-        return HDMIInFrontend(name, description)
-    return None
 
-
-def create_hdmioutfrontend(name, description):
-    if HDMIOutFrontend.checkhierarchy(name, description):
-        return HDMIOutFrontend(name, description)
-    return None
-
-
-def create_hdmi(name, description):
-    if HDMIWrapper.checkhierarchy(name, description):
-        return HDMIWrapper(name, description)
-    return None
-
-
-register_hierarchy(create_hdmiinfrontend)
-register_hierarchy(create_hdmioutfrontend)
-register_hierarchy(create_hdmi)
+register_hierarchy_driver(HDMIInFrontend)
+register_hierarchy_driver(HDMIOutFrontend)
+register_hierarchy_driver(HDMIWrapper)

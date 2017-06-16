@@ -1,8 +1,8 @@
-from pynq import register_type
-from pynq import MMIO
+from pynq import register_ip_driver
+from pynq import UnknownIP
 
 
-class AxiGPIO:
+class AxiGPIO(UnknownIP):
 
     class Input:
 
@@ -71,10 +71,10 @@ class AxiGPIO:
 
         def write(self, val, mask):
             self.val = (self.val & ~mask) | val
-            self._parent._mmio.write(self._channel * 8, self.val)
+            self._parent.write(self._channel * 8, self.val)
 
         def read(self):
-            return self._parent._mmio.read(self._channel * 8)
+            return self._parent.read(self._channel * 8)
 
         def setlength(self, length):
             self.length = length
@@ -86,7 +86,7 @@ class AxiGPIO:
             self.slicetype = direction
 
     def __init__(self, description):
-        self._mmio = MMIO(description=description)
+        super().__init__(description)
         self._channels = [AxiGPIO.Channel(self, i) for i in range(2)]
         self.channel1 = self._channels[0]
         self.channel2 = self._channels[1]
@@ -104,4 +104,4 @@ class AxiGPIO:
         return self.channel1[idx]
 
 
-register_type('xilinx.com:ip:axi_gpio:2.0', AxiGPIO)
+register_ip_driver('xilinx.com:ip:axi_gpio:2.0', AxiGPIO)

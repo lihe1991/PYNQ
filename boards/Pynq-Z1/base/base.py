@@ -2,7 +2,7 @@ import pynq
 import pynq.lib
 import pynq.lib.video
 
-class BaseOverlay(pynq.AttributeOverlay):
+class BaseOverlay(pynq.UnknownOverlay):
     """ The Base overlay for the Pynq-Z1
 
     This overlay is designed to interact with all of the on board peripherals
@@ -25,9 +25,9 @@ class BaseOverlay(pynq.AttributeOverlay):
          2-bit input GPIO for interacting with the switches SW0 and SW1
     rgbleds : [pynq.board.RGBLED]
          Wrapper for GPIO for LD4 and LD5 multicolour LEDs
-    video : pynq.drivers.video
+    video : pynq.lib.video.HDMIWrapper
          HDMI input and output interfaces
-    audio : pynq.drivers.audio
+    audio : pynq.lib.audio.Audio
          Headphone jack and on-board microphone
 
     """
@@ -51,6 +51,4 @@ class BaseOverlay(pynq.AttributeOverlay):
 
         self.rgbleds = ([None] * 4) + [pynq.lib.RGBLED(i) for i in range(4,6)]
 
-
-def create_overlay(bitfile):
-    return BaseOverlay(bitfile)
+Overlay = BaseOverlay

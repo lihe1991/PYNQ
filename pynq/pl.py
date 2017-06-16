@@ -968,11 +968,50 @@ _ip_drivers = dict()
 _hierarchy_drivers = collections.deque()
 
 
+class UnknownIP:
+    """Driver for an IP without a more specific driver
+
+    This driver wraps an MMIO device and provides a base class
+    for more specific drivers written later
+
+    Attributes
+    ----------
+    mmio : pynq.MMIO
+        Underlying MMIO driver for the device
+
+    """
+
+    def __init__(self, description):
+        self.mmio = MMIO(description=description)
+
+    def read(self, offset=0):
+        """Read from the MMIO device
+
+        Parameters
+        ----------
+        offset : int
+            Address to read
+
+        """
+        return self.mmio.read(offset)
+
+    def write(self, offset, value):
+        """Write to the MMIO device
+
+        Parameters
+        offset : int
+            Address to write to
+        value : int or bytes
+            Data to write
+
+        """
+        self.mmio.write(offset, value)
+
 def _create_ip(desc):
     if desc['type'] in _ip_drivers:
         return _ip_drivers[desc['type']](description=desc)
     else:
-        return MMIO(description=desc)
+        return UnknownIP(description=desc)
 
 
 class _IPMap:
@@ -993,22 +1032,22 @@ class _IPMap:
             subdesc = {k.partition('/')[2]: v
                        for k, v in self._description.items()
                        if k.startswith(f'{key}/')}
-            ret = None
+            hierarchy = None
             for hip in _hierarchy_drivers:
-                ret = hip(fullpath, subdesc)
-                if ret:
-                    setattr(self, key, ret)
-                    return ret
-            ret = _IPMap(fullpath, subdesc)
-            setattr(self, key, ret)
-            return ret
+                if hip.checkhierarchy(fullpath, subdesc):
+                    hierarchy = hip(fullpath, subdesc)
+                    setattr(self, key, hierarchy)
+                    return hierarchy
+            hierarchy = UnknownHierarchy(fullpath, subdesc)
+            setattr(self, key, hierarchy)
+            return hierarchy
         elif key in self._ipnames:
             ip_description = self._description[key]
             if 'fullpath' not in ip_description:
                 ip_description['fullpath'] = fullpath
-            ret = _create_ip(ip_description)
-            setattr(self, key, ret)
-            return ret
+            driver = _create_ip(ip_description)
+            setattr(self, key, driver)
+            return driver
         else:
             try:
                 return getattr(super(), key)
@@ -1021,7 +1060,16 @@ class _IPMap:
                 [i for i in self._ipnames])
 
 
-class Hierarchy(_IPMap):
+class UnknownHierarchy(_IPMap):
+    """Hierarchy exposing all IP and hierarchies as attributes
+
+    This Hierarchy is instantiated if no more specific hierarchy class
+    registered with register_hierarchy_driver is specified. More specific
+    drivers should inherit from UnknownHierarachy and call it's constructor
+    in __init__ prior to any other initialisation. `checkhierarchy` should
+    also be redefined to return True if the driver matches a hierarchy
+
+    """
     def __init__(self, path, description=None):
         if description is None:
             ip_dict = PL.ip_dict
@@ -1032,8 +1080,20 @@ class Hierarchy(_IPMap):
         self.description = description
         super().__init__(path, description)
 
+    @staticmethod
+    def checkhierarhcy(path, description):
+        """Function to check if the driver matches a particular hierarchy
 
-class AttributeOverlay(_Overlay):
+        This function should be redefined in derived classes to return True
+        if the description matches what is expected by the driver. The default
+        implementation always returns False so that drivers that forget don't
+        get loaded for hierarchies they don't expect.
+
+        """
+        return False
+
+
+class UnknownOverlay(_Overlay):
     """An Overlay exposing the IP in the PL as attributes
 
     """
@@ -1058,12 +1118,12 @@ class AttributeOverlay(_Overlay):
                 [i for i in self._ip_map._ipnames] + ['programmed'])
 
 
-def register_type(name, constructor):
-    _ip_drivers[name] = constructor
+def register_ip_driver(vlnv, constructor):
+    _ip_drivers[vlnv] = constructor
 
 
-def register_hierarchy(constructor):
-    _hierarchy_drivers.appendleft(constructor)
+def register_hierarchy_driver(driver):
+    _hierarchy_drivers.appendleft(driver)
 
 
 def Overlay(bitfile, class_=None):
@@ -1077,6 +1137,6 @@ def Overlay(bitfile, class_=None):
             python_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        return module.create_overlay(bitfile)
+        return module.Overlay(bitfile)
     else:
-        return AttributeOverlay(bitfile)
+        return UnknownOverlay(bitfile)
