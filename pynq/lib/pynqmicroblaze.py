@@ -307,7 +307,8 @@ class MicroblazeHierarchy(UnknownHierarchy):
         self._mb_info = {'ip_name' : f'{hierarchy}/mb_bram_ctrl',
                          'rst_name' : f'mb_{hierarchy}_reset',
                          'intr_pin_name' : f'{hierarchy}/dff_en_reset_0/q',
-                         'intr_ack_name' : f'mb_{hierarchy}_intr_ack'}
+                         'intr_ack_name' : f'mb_{hierarchy}_intr_ack',
+                         'mbtype' : mbtype}
 
 
     def load(self, program, *args, **kwargs):
@@ -319,6 +320,14 @@ class MicroblazeHierarchy(UnknownHierarchy):
             return getattr(self._program, key)
         else:
             raise AttributeError('Attribute unknown and no program loaded')
+
+    @property
+    def mbtype(self):
+        return self._mb_info['mbtype']
+
+    @mbtype.setter
+    def mbtype(self, value):
+        self._mb_info['mbtype'] = value
 
     @staticmethod
     def checkhierarchy(hierarchy, description):

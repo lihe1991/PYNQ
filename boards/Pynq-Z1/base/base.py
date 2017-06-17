@@ -39,6 +39,10 @@ class BaseOverlay(pynq.UnknownOverlay):
         self.pmodb = self.iop2
         self.arduino = self.iop3
 
+        self.pmoda.mbtype = "PMOD"
+        self.pmodb.mbtype = "PMOD"
+        self.arduino.mbtype = "Arduino"
+
         self.leds = self.swsleds_gpio.channel2
         self.switches = self.swsleds_gpio.channel1
         self.buttons = self.btns_gpio.channel1

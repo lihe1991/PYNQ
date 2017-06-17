@@ -182,7 +182,7 @@ class HDMIOutFrontend(UnknownHierarchy):
             The IP dictionary entry for the clock generator to use
 
         """
-        super().__init__(hierarchy, description)
+        super().__init__(path, description)
         ip_dict = self.description
         vtc_description = ip_dict[f'vtc_out']
         clock_description = ip_dict[f'axi_dynclk']
@@ -836,9 +836,9 @@ class PixelPacker(UnknownIP):
             IP dict entry for the IP core
 
         """
-        super().__init__(self, description)
+        super().__init__(description)
         self._bpp = 24
-        self._mmio.write(0x10, 0)
+        self.write(0x10, 0)
         self._resample = False
 
     @property
@@ -991,16 +991,16 @@ class HDMIIn(UnknownHierarchy):
                 'color_convert' in description and
                 HDMIInFrontend.checkhierarchy(f"{path}/frontend", frontend_dict))
 
-    def __init__(self, hierarchy, description, vdma=None):
+    def __init__(self, path, description, vdma=None):
         """Initialise the drivers for the pipeline
 
         Parameters
         ----------
-        hierarchy : str
+        path : str
             name of the hierarchy containing all of the video blocks
 
         """
-        super().__init__(hierarchy, description)
+        super().__init__(path, description)
         ip_dict = self.description
         self._vdma = vdma
         self._color = self.color_convert
@@ -1130,16 +1130,16 @@ class HDMIOut(UnknownHierarchy):
                 'color_convert' in description and
                 HDMIOutFrontend.checkhierarchy(f"{path}/frontend", frontend_dict))
 
-    def __init__(self, hierarchy, description, vdma=None):
+    def __init__(self, path, description, vdma=None):
         """Initialise the drivers for the pipeline
 
         Parameters
         ----------
-        hierarchy : str
+        path : str
             name of the hierarchy containing all of the video blocks
 
         """
-        super().__init__(hierarchy, description)
+        super().__init__(path, description)
         self._vdma = vdma
         self._color = self.color_convert
         self._pixel = self.pixel_unpack
@@ -1271,11 +1271,11 @@ class HDMIWrapper(UnknownHierarchy):
 
     def __init__(self, path, description):
         super().__init__(path, description)
-        self.name = name
+        self.name = path
         in_dict = _subhierarchy('hdmi_in', description)
         out_dict = _subhierarchy('hdmi_out', description)
-        self.hdmi_in = HDMIIn(name, in_dict, self.axi_vdma)
-        self.hdmi_out = HDMIOut(name, out_dict, self.axi_vdma)
+        self.hdmi_in = HDMIIn(path, in_dict, self.axi_vdma)
+        self.hdmi_out = HDMIOut(path, out_dict, self.axi_vdma)
 
 
 
