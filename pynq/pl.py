@@ -772,7 +772,7 @@ class Bitstream(PL):
         PL.server_update()
 
 
-class _Overlay(PL):
+class DefaultOverlay(PL):
     """This class keeps track of a single bitstream's state and contents.
 
     The overlay class holds the state of the bitstream and enables run-time
@@ -781,6 +781,13 @@ class _Overlay(PL):
     Our definition of overlay is: "post-bitstream configurable design".
     Hence, this class must expose configurability through content discovery
     and runtime protection.
+
+    The overlay class exposes the IP and hierarchies as attributes in the
+    overlay. If no other drivers are available the `DefaultIP` is constructed
+    for IP cores at top level and `DefaultHierarchy` for any hierarchies that
+    contain addressable IP. Custom drivers can be bound to IP and hierarchies
+    by subclassing `DefaultIP` and `DefaultHierarchy`. See the help entries
+    for those class for more details.
 
     This class stores four dictionaries: IP, GPIO, interrupt controller
     and interrupt pin dictionaries.
@@ -873,6 +880,16 @@ class _Overlay(PL):
         self.interrupt_pins = tcl.interrupt_pins
         self.clock_dict = tcl.clock_dict
 
+        self._ip_map = _IPMap("", self.ip_dict)
+        self.download()
+
+    def __getattr__(self, key):
+        if self.is_loaded():
+            return getattr(self._ip_map, key)
+        else:
+            raise RuntimeError("Overlay not currently loaded")
+
+
     def download(self):
         """The method to download a bitstream onto PL.
 
@@ -963,16 +980,40 @@ class _Overlay(PL):
         PL.load_ip_data(ip_name, data)
         self.ip_dict[ip_name]['state'] = data
 
+    def __dir__(self):
+        return sorted(set(super().__dir__()
+                          + list(self.__dict__.keys())
+                          + [h for h in self._ip_map._hierarchies]
+                          + [i for i in self._ip_map._ipnames]))
+
 
 _ip_drivers = dict()
 _hierarchy_drivers = collections.deque()
 
 
-class UnknownIP:
+class RegisterIP(type):
+    """Meta class that binds all registers all subclasses as IP drivers
+
+    The `bindto` attribute of subclasses should be an array of strings containing
+    the VLNV of the IP the driver should bind to.
+
+    """
+    def __init__(cls, name, bases, attrs):
+        if 'bindto' in attrs:
+            for vlnv in cls.bindto:
+                _ip_drivers[vlnv] = cls
+        return super().__init__(name, bases, attrs)
+
+
+class DefaultIP(metaclass=RegisterIP):
     """Driver for an IP without a more specific driver
 
     This driver wraps an MMIO device and provides a base class
-    for more specific drivers written later
+    for more specific drivers written later. More specific
+    drivers should inherit from `DefaultIP` and include a
+    `bindto` entry containing all of the IP that the driver
+    should bind to. Subclasses meeting these requirements will
+    automatically be registered.
 
     Attributes
     ----------
@@ -1011,7 +1052,7 @@ def _create_ip(desc):
     if desc['type'] in _ip_drivers:
         return _ip_drivers[desc['type']](description=desc)
     else:
-        return UnknownIP(description=desc)
+        return DefaultIP(description=desc)
 
 
 class _IPMap:
@@ -1038,7 +1079,7 @@ class _IPMap:
                     hierarchy = hip(fullpath, subdesc)
                     setattr(self, key, hierarchy)
                     return hierarchy
-            hierarchy = UnknownHierarchy(fullpath, subdesc)
+            hierarchy = DefaultHierarchy(fullpath, subdesc)
             setattr(self, key, hierarchy)
             return hierarchy
         elif key in self._ipnames:
@@ -1060,14 +1101,29 @@ class _IPMap:
                 [i for i in self._ipnames])
 
 
-class UnknownHierarchy(_IPMap):
+class RegisterHierarchy(type):
+    """Metaclass to register classes as hierarchy drivers
+
+    Any class with this metaclass an the `checkhierarchy` function
+    will be registered in the global driver database
+
+    """
+    def __init__(cls, name, bases, attrs):
+        if 'checkhierarchy' in attrs:
+            _hierarchy_drivers.appendleft(cls)
+        return super().__init__(name, bases, attrs)
+
+
+class DefaultHierarchy(_IPMap, metaclass=RegisterHierarchy):
     """Hierarchy exposing all IP and hierarchies as attributes
 
     This Hierarchy is instantiated if no more specific hierarchy class
     registered with register_hierarchy_driver is specified. More specific
-    drivers should inherit from UnknownHierarachy and call it's constructor
+    drivers should inherit from `DefaultHierarachy` and call it's constructor
     in __init__ prior to any other initialisation. `checkhierarchy` should
-    also be redefined to return True if the driver matches a hierarchy
+    also be redefined to return True if the driver matches a hierarchy.
+    Any derived class that meets these requirements will automatically be
+    registered in the driver database.
 
     """
     def __init__(self, path, description=None):
@@ -1081,7 +1137,7 @@ class UnknownHierarchy(_IPMap):
         super().__init__(path, description)
 
     @staticmethod
-    def checkhierarhcy(path, description):
+    def checkhierarchy(path, description):
         """Function to check if the driver matches a particular hierarchy
 
         This function should be redefined in derived classes to return True
@@ -1091,39 +1147,6 @@ class UnknownHierarchy(_IPMap):
 
         """
         return False
-
-
-class UnknownOverlay(_Overlay):
-    """An Overlay exposing the IP in the PL as attributes
-
-    """
-
-    def __init__(self, bitfile):
-        super().__init__(bitfile)
-        self._ip_map = _IPMap("", self.ip_dict)
-        self.download()
-
-    def __getattr__(self, key):
-        if self.programmed:
-            return getattr(self._ip_map, key)
-        else:
-            raise RuntimeError("Overlay not currently loaded")
-
-    @property
-    def programmed(self):
-        return PL.bitfile_name == self.bitfile_name
-
-    def __dir__(self):
-        return (dir(super()) + [h for h in self._ip_map._hierarchies] +
-                [i for i in self._ip_map._ipnames] + ['programmed'])
-
-
-def register_ip_driver(vlnv, constructor):
-    _ip_drivers[vlnv] = constructor
-
-
-def register_hierarchy_driver(driver):
-    _hierarchy_drivers.appendleft(driver)
 
 
 def Overlay(bitfile, class_=None):
@@ -1139,4 +1162,4 @@ def Overlay(bitfile, class_=None):
         spec.loader.exec_module(module)
         return module.Overlay(bitfile)
     else:
-        return UnknownOverlay(bitfile)
+        return DefaultOverlay(bitfile)

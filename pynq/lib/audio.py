@@ -36,8 +36,7 @@ import time
 from pynq import PL
 from pynq import GPIO
 from pynq import MMIO
-from pynq import register_hierarchy_driver
-from pynq import UnknownHierarchy
+from pynq import DefaultHierarchy
 
 __author__ = "Benedikt Janssen"
 __copyright__ = "Copyright 2016, Xilinx"
@@ -47,7 +46,7 @@ __email__ = "pynq_support@xilinx.com"
 LIB_SEARCH_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
-class Audio(UnknownHierarchy):
+class Audio(DefaultHierarchy):
     """Class to interact with audio controller.
     
     Each audio sample is a 32-bit integer. The audio controller supports only 
@@ -298,6 +297,3 @@ class Audio(UnknownHierarchy):
         if 'd_axi_pdm_1' in description:
             return True
         return False
-
-
-register_hierarchy_driver(Audio)

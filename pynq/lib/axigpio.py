@@ -1,8 +1,7 @@
-from pynq import register_ip_driver
-from pynq import UnknownIP
+from pynq import DefaultIP
 
 
-class AxiGPIO(UnknownIP):
+class AxiGPIO(DefaultIP):
 
     class Input:
 
@@ -91,6 +90,8 @@ class AxiGPIO(UnknownIP):
         self.channel1 = self._channels[0]
         self.channel2 = self._channels[1]
 
+    bindto = ['xilinx.com:ip:axi_gpio:2.0']
+
     def setlength(self, length, channel=1):
         self._channels[channel - 1].length = length
 
@@ -102,6 +103,3 @@ class AxiGPIO(UnknownIP):
 
     def __getitem__(self, idx):
         return self.channel1[idx]
-
-
-register_ip_driver('xilinx.com:ip:axi_gpio:2.0', AxiGPIO)

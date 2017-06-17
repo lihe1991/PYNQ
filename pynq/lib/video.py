@@ -34,12 +34,10 @@ import numpy as np
 import time
 
 from pynq import Interrupt
-from pynq import UnknownIP
-from pynq import UnknownHierarchy
+from pynq import DefaultIP
+from pynq import DefaultHierarchy
 from pynq import PL
 from pynq import Xlnk
-from pynq import register_ip_driver
-from pynq import register_hierarchy_driver
 import pynq.lib._video
 
 
@@ -87,7 +85,7 @@ class VideoMode:
                 f"height={self.height} bpp={self.bits_per_pixel}")
 
 
-class HDMIInFrontend(UnknownHierarchy):
+class HDMIInFrontend(DefaultHierarchy):
     """Class for interacting the with HDMI input frontend
 
     This class is used for enabling the HDMI input and retrieving
@@ -153,7 +151,7 @@ _outputmodes = {
 }
 
 
-class HDMIOutFrontend(UnknownHierarchy):
+class HDMIOutFrontend(DefaultHierarchy):
     """Class for interacting the HDMI output frontend
 
     This class is used for enabling the HDMI output and setting
@@ -265,7 +263,7 @@ class _FrameCache:
         self._cache.clear()
 
 
-class AxiVDMA(UnknownIP):
+class AxiVDMA(DefaultIP):
     """Driver class for the Xilinx VideoDMA IP core
 
     The driver is split into input and output channels are exposed using the
@@ -762,9 +760,10 @@ class AxiVDMA(UnknownIP):
         self.readchannel = AxiVDMA.S2MMChannel(self, f"{path}/s2mm_introut")
         self.writechannel = AxiVDMA.MM2SChannel(self, f"{path}/mm2s_introut")
 
-register_ip_driver('xilinx.com:ip:axi_vdma:6.2', AxiVDMA)
+    bindto = ['xilinx.com:ip:axi_vdma:6.2']
 
-class ColorConverter(UnknownIP):
+
+class ColorConverter(DefaultIP):
     """Driver for the color space converter
 
     The colorspace convert implements a 3x4 matrix for performing arbitrary
@@ -797,7 +796,9 @@ class ColorConverter(UnknownIP):
         """
         super().__init__(description)
 
+    bindto = ['xilinx.com:hls:color_convert:1.0']
     @property
+
     def colorspace(self):
         """The colorspace to convert. See the class description for
         details of the coefficients. The coefficients are a list of
@@ -814,9 +815,7 @@ class ColorConverter(UnknownIP):
             self.write(0x10 + 8 * i, int(c * 256))
 
 
-register_ip_driver('xilinx.com:hls:color_convert:1.0', ColorConverter)
-
-class PixelPacker(UnknownIP):
+class PixelPacker(DefaultIP):
     """Driver for the pixel format convert
 
     Changes the number of bits per pixel in the video stream. The stream
@@ -840,6 +839,9 @@ class PixelPacker(UnknownIP):
         self._bpp = 24
         self.write(0x10, 0)
         self._resample = False
+
+    bindto = ['xilinx.com:hls:pixel_pack:1.0',
+              'xilinx.com:hls:pixel_unpack:1.0']
 
     @property
     def bits_per_pixel(self):
@@ -900,9 +902,6 @@ class PixelPacker(UnknownIP):
         # Make sure the mode is updated
         if self.bits_per_pixel == 16:
             self.bits_per_pixel = 16
-
-register_ip_driver('xilinx.com:hls:pixel_pack:1.0', PixelPacker)
-register_ip_driver('xilinx.com:hls:pixel_unpack:1.0', PixelPacker)
 
 
 COLOR_IN_BGR = [1, 0, 0,
@@ -974,7 +973,7 @@ def _subhierarchy(key, description):
     return filtered_dict
 
 
-class HDMIIn(UnknownHierarchy):
+class HDMIIn(DefaultHierarchy):
     """Wrapper for the input video pipeline of the Pynq-Z1 base overlay
 
     This wrapper assumes the following pipeline structure and naming
@@ -1113,7 +1112,7 @@ class HDMIIn(UnknownHierarchy):
         self._vdma.readchannel.tie(output._vdma.writechannel)
 
 
-class HDMIOut(UnknownHierarchy):
+class HDMIOut(DefaultHierarchy):
     """Wrapper for the output video pipeline of the Pynq-Z1 base overlay
 
     This wrapper assumes the following pipeline structure and naming
@@ -1260,7 +1259,7 @@ class HDMIOut(UnknownHierarchy):
         """
         await self._vdma.writechannel.writeframe_async(frame)
 
-class HDMIWrapper(UnknownHierarchy):
+class HDMIWrapper(DefaultHierarchy):
     @staticmethod
     def checkhierarchy(path, description):
         in_dict = _subhierarchy('hdmi_in', description)
@@ -1276,9 +1275,3 @@ class HDMIWrapper(UnknownHierarchy):
         out_dict = _subhierarchy('hdmi_out', description)
         self.hdmi_in = HDMIIn(path, in_dict, self.axi_vdma)
         self.hdmi_out = HDMIOut(path, out_dict, self.axi_vdma)
-
-
-
-register_hierarchy_driver(HDMIInFrontend)
-register_hierarchy_driver(HDMIOutFrontend)
-register_hierarchy_driver(HDMIWrapper)

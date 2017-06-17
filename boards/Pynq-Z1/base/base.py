@@ -1,8 +1,9 @@
 import pynq
 import pynq.lib
 import pynq.lib.video
+import pynq.lib.audio
 
-class BaseOverlay(pynq.UnknownOverlay):
+class BaseOverlay(pynq.DefaultOverlay):
     """ The Base overlay for the Pynq-Z1
 
     This overlay is designed to interact with all of the on board peripherals

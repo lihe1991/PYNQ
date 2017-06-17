@@ -34,8 +34,7 @@ from pynq import MMIO
 from pynq import GPIO
 from pynq import PL
 from pynq import Interrupt
-from pynq import UnknownHierarchy
-from pynq import register_hierarchy_driver
+from pynq import DefaultHierarchy
 
 __author__ = "Yun Rock Qu"
 __copyright__ = "Copyright 2016, Xilinx"
@@ -302,7 +301,7 @@ class PynqMicroblaze:
             raise ValueError('Length of read data has to be 1 or more.')
 
 
-class MicroblazeHierarchy(UnknownHierarchy):
+class MicroblazeHierarchy(DefaultHierarchy):
     def __init__(self, hierarchy, description, mbtype="Unknown"):
         self._mb_info = {'ip_name' : f'{hierarchy}/mb_bram_ctrl',
                          'rst_name' : f'mb_{hierarchy}_reset',
@@ -332,6 +331,3 @@ class MicroblazeHierarchy(UnknownHierarchy):
     @staticmethod
     def checkhierarchy(hierarchy, description):
         return 'mb_bram_ctrl' in description
-
-
-register_hierarchy_driver(MicroblazeHierarchy)

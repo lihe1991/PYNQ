@@ -33,8 +33,7 @@ import cffi
 import functools
 import signal
 import numpy as np
-from pynq import UnknownIP
-from pynq import register_ip_driver
+from pynq import DefaultIP
 
 
 __author__ = "Anurag Dubey"
@@ -579,7 +578,7 @@ class _DMAChannel:
         self._clearinterrupt()
 
 
-class AxiDMA(UnknownIP):
+class AxiDMA(DefaultIP):
     """Class for Interacting with the AXI Simple DMA Engine
 
     This class provides two attributes for the read and write channels.
@@ -615,5 +614,4 @@ class AxiDMA(UnknownIP):
        self.sendchannel = _DMAChannel(self.mmio, 0x0)
        self.recvchannel = _DMAChannel(self.mmio, 0x30)
 
-register_ip_driver('xilinx.com:ip:axi_dma:7.1', AxiDMA)
-
+    bindto = ['xilinx.com:ip:axi_dma:7.1']

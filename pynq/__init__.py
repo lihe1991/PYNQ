@@ -39,11 +39,9 @@ from .pl import PL
 from .pl import PL_SERVER_FILE
 from .pl import Bitstream
 from .pl import Overlay
-from .pl import UnknownOverlay
-from .pl import UnknownHierarchy
-from .pl import UnknownIP
-from .pl import register_ip_driver
-from .pl import register_hierarchy_driver
+from .pl import DefaultOverlay
+from .pl import DefaultHierarchy
+from .pl import DefaultIP
 from .ps import Register
 from .ps import Clocks
 from .interrupt import Interrupt
