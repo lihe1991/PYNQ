@@ -33,6 +33,7 @@ import cffi
 import functools
 import signal
 import numpy as np
+from pynq import MMIO, register_type
 
 
 __author__ = "Anurag Dubey"
@@ -533,3 +534,84 @@ class DMA:
         """
         self.free_buf()
         self.__init__(self.phyAddress, self.direction, attr_dict)
+
+class _DMAChannel:
+    def __init__(self, mmio, offset, interrupt_name=None):
+        self._mmio = mmio
+        self._offset = offset
+        if interrupt_name:
+            self._interrupt = Interrupt(interrupt_name)
+            self._mmio.write(offset, 0x1001)
+        else:
+            self._interrupt = None
+            self._mmio.write(offset, 0x0001)
+        while not self.running:
+            pass
+
+    @property
+    def running(self):
+        return self._mmio.read(self._offset + 4) & 0x01 == 0x00
+
+    @property
+    def idle(self):
+        return self._mmio.read(self._offset + 4) & 0x02 == 0x02
+
+    def stop(self):
+        self._mmio.write(self._offset, 0x0000)
+        while self.running:
+            pass
+
+    def _clearinterrupt(self):
+        self._mmio.write(self._offset + 4, 0x1000)
+
+    def transfer(self, buffer):
+        self._mmio.write(self._offset + 0x18, buffer.physical_address)
+        self._mmio.write(self._offset + 0x28, buffer.nbytes)
+
+    def wait(self):
+        while not self.idle:
+            pass
+
+    async def wait_async(self):
+        while not self.idle:
+            await self._interrupt.wait()
+        self._clearinterrupt()
+
+class AxiDMA(MMIO):
+    """Class for Interacting with the AXI Simple DMA Engine
+
+    This class provides two attributes for the read and write channels.
+    The read channel copies data from the stream into memory and
+    the write channel copies data from memory to the output stream.
+    Both channels have an identical API consisting of `transfer` and
+    `wait` functions. If interrupts have been enabled and connected
+    for the DMA engine then `wait_async` is also present.
+
+    Buffers to be transferred must be allocated through the Xlnk driver
+    using the cma_array function either directly or indirectly. This
+    means that Frames from the video subsystem can be transferred using
+    this class.
+
+    Attributes
+    ----------
+    readchannel : _DMAChannel
+        The stream to memory channel
+    writechannel : _DMAChannel
+        The memory to stream channel
+
+    """
+    def __init__(self, description):
+       """Create an instance of the DMA Driver
+
+       Parameters
+       ----------
+       description : dict
+           The entry in the IP dict describing the DMA engine
+
+       """
+       super().__init__(description=description)
+       self.sendchannel = _DMAChannel(self._mmio, 0x0)
+       self.recvchannel = _DMAChannel(self._mmio, 0x30)
+
+register_type('xilinx.com:ip:axi_dma:7.1', AxiDMA)
+

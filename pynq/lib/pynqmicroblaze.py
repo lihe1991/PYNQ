@@ -34,7 +34,8 @@ from pynq import MMIO
 from pynq import GPIO
 from pynq import PL
 from pynq import Interrupt
-
+from pynq import Hierarchy
+from pynq import register_hierarchy
 
 __author__ = "Yun Rock Qu"
 __copyright__ = "Copyright 2016, Xilinx"
@@ -299,3 +300,34 @@ class PynqMicroblaze:
             return [self.mmio.read(offset + 4*i) for i in range(length)]
         else:
             raise ValueError('Length of read data has to be 1 or more.')
+
+
+class MicroblazeHierarchy(Hierarchy):
+    def __init__(self, hierarchy, description, mbtype="Unknown"):
+        self._mb_info = {'ip_name' : f'{hierarchy}/mb_bram_ctrl',
+                         'rst_name' : f'mb_{hierarchy}_reset',
+                         'intr_pin_name' : f'{hierarchy}/dff_en_reset_0/q',
+                         'intr_ack_name' : f'mb_{hierarchy}_intr_ack'}
+
+
+    def load(self, program, *args, **kwargs):
+        self._program = program(self._mb_info, *args, **kwargs)
+
+
+    def __getattr__(self, key):
+        if self._program:
+            return getattr(self._program, key)
+        else:
+            raise AttributeError('Attribute unknown and no program loaded')
+
+    @staticmethod
+    def checkhierarchy(hierarchy, description):
+        return 'mb_bram_ctrl' in description
+
+
+def createmicroblaze(hierarchy, description):
+    if MicroblazeHierarchy.checkhierarchy(hierarchy, description):
+        return MicroblazeHierarchy(hierarchy, description)
+    return None
+
+register_hierarchy(createmicroblaze)

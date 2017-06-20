@@ -37,6 +37,8 @@
 
 
 from .pynqmicroblaze import PynqMicroblaze
+from .axigpio import AxiGPIO
+from .dma import AxiDMA
 from .led import LED
 from .rgbled import RGBLED
 from .switch import Switch

@@ -27,6 +27,8 @@
 #   OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import collections
+import importlib.util
 import os
 import re
 import mmap
@@ -770,7 +772,7 @@ class Bitstream(PL):
         PL.server_update()
 
 
-class Overlay(PL):
+class _Overlay(PL):
     """This class keeps track of a single bitstream's state and contents.
 
     The overlay class holds the state of the bitstream and enables run-time
@@ -960,3 +962,121 @@ class Overlay(PL):
         """
         PL.load_ip_data(ip_name, data)
         self.ip_dict[ip_name]['state'] = data
+
+
+_ip_drivers = dict()
+_hierarchy_drivers = collections.deque()
+
+
+def _create_ip(desc):
+    if desc['type'] in _ip_drivers:
+        return _ip_drivers[desc['type']](description=desc)
+    else:
+        return MMIO(description=desc)
+
+
+class _IPMap:
+
+    def __init__(self, path, desc):
+        self._hierarchies = {k.partition('/')[0]
+                             for k in desc.keys() if k.count('/')}
+        self._ipnames = {k for k in desc.keys() if k.count('/') == 0}
+        self._description = desc
+        self._path = path
+
+    def __getattr__(self, key):
+        if self._path:
+            fullpath = f"{self._path}/{key}"
+        else:
+            fullpath = key
+        if key in self._hierarchies:
+            subdesc = {k.partition('/')[2]: v
+                       for k, v in self._description.items()
+                       if k.startswith(f'{key}/')}
+            ret = None
+            for hip in _hierarchy_drivers:
+                ret = hip(fullpath, subdesc)
+                if ret:
+                    setattr(self, key, ret)
+                    return ret
+            ret = _IPMap(fullpath, subdesc)
+            setattr(self, key, ret)
+            return ret
+        elif key in self._ipnames:
+            ip_description = self._description[key]
+            if 'fullpath' not in ip_description:
+                ip_description['fullpath'] = fullpath
+            ret = _create_ip(ip_description)
+            setattr(self, key, ret)
+            return ret
+        else:
+            try:
+                return getattr(super(), key)
+            except (AttributeError):
+                raise AttributeError(
+                    f"Could not find IP or hierarchy {key} in overlay")
+
+    def __dir__(self):
+        return (dir(super()) + [h for h in self._hierarchies] +
+                [i for i in self._ipnames])
+
+
+class Hierarchy(_IPMap):
+    def __init__(self, path, description=None):
+        if description is None:
+            ip_dict = PL.ip_dict
+            filtered_dict = {k.replace(f'{path}/','',1): v
+                             for k, v in ip_dict.items()
+                             if k.startswith(f'{path}/')}
+            description = filtered_dict
+        self.description = description
+        super().__init__(path, description)
+
+
+class AttributeOverlay(_Overlay):
+    """An Overlay exposing the IP in the PL as attributes
+
+    """
+
+    def __init__(self, bitfile):
+        super().__init__(bitfile)
+        self._ip_map = _IPMap("", self.ip_dict)
+        self.download()
+
+    def __getattr__(self, key):
+        if self.programmed:
+            return getattr(self._ip_map, key)
+        else:
+            raise RuntimeError("Overlay not currently loaded")
+
+    @property
+    def programmed(self):
+        return PL.bitfile_name == self.bitfile_name
+
+    def __dir__(self):
+        return (dir(super()) + [h for h in self._ip_map._hierarchies] +
+                [i for i in self._ip_map._ipnames] + ['programmed'])
+
+
+def register_type(name, constructor):
+    _ip_drivers[name] = constructor
+
+
+def register_hierarchy(constructor):
+    _hierarchy_drivers.appendleft(constructor)
+
+
+def Overlay(bitfile, class_=None):
+    bitfile_path = os.path.join(PYNQ_PATH, bitfile.replace('.bit', ''), bitfile)
+    python_path = os.path.splitext(bitfile_path)[0] + '.py'
+    if class_:
+        return class_(bitfile)
+    elif os.path.exists(python_path):
+        spec = importlib.util.spec_from_file_location(
+            os.path.splitext(os.path.basename(bitfile_path))[0],
+            python_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.create_overlay(bitfile)
+    else:
+        return AttributeOverlay(bitfile)

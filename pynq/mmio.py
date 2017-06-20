@@ -60,7 +60,7 @@ class MMIO:
 
     """
 
-    def __init__(self, base_addr, length=4, debug=False):
+    def __init__(self, base_addr=-1, length=4, debug=False, description=None):
         """Return a new MMIO object.
 
         Parameters
@@ -71,8 +71,13 @@ class MMIO:
             The length in bytes; default is 4.
         debug : bool
             Turn on debug mode if it is True; default is False.
+        description : dict
+            Entry from the IP dict to initialise the MMIO driver
 
         """
+        if description:
+            base_addr = description['phys_addr']
+            length = description['addr_range']
         if base_addr < 0 or length < 0:
             raise ValueError("Negative offset or negative length.")
 
