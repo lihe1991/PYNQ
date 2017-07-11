@@ -5,6 +5,33 @@ Change log
 .. contents:: Table of Contents
    :depth: 2
 
+
+Version 1.5 
+============================
+
+Image release:
+
+Documentation updated:  
+
+* Pynq API/driver changes
+
+* Added Linux Packages
+
+* New Python Packages 
+
+* Updated Python Pacakges 
+
+* Other changes
+
+* IP changes
+
+
+* Overlay changes
+   * Added logictools overlay
+   
+* Documentation changes
+   * Added Create Overlays section
+
 Version 1.4 
 ============================
 
