@@ -1,5 +1,5 @@
 ****************************
-Digital Interfacing overlay
+Logictools overlay
 ****************************
 
 .. toctree::

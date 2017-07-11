@@ -11,6 +11,22 @@ The Xilinx® Vivado software is used to create a Zynq design. A *bitstream* or *
 A free WebPack version of Vivado is available to build overlays.
 https://www.xilinx.com/products/design-tools/vivado/vivado-webpack.html
 
+The hardware designer is encouraged to support programmability in the IP used in a PYNQ overlays. Once the IP has been created, the PL design is carried out in the same way as any other Zynq design. IP in an overlay that can be controlled by PYNQ will be memory mapped, connected to GPIO. IP may also have a master connection to the PL. PYNQ provides Python libraries to interface to the PL design and which can be used to create their own drivers. The Python API for an overlay will be and will be covered in the next sections. 
+
+Vivado board and constraint files PYNQ-Z1
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Vivado board files can be installed to make it easier to create a new project. 
+
+* `PYNQ-Z1 Vivado board files <https://github.com/cathalmccabe/pynq-z1_board_files/raw/master/pynq-z1.zip>`_
+
+To install the board files, extract the board file archive, and copy the board files folder to:
+
+   .. code-block:: console
+
+      <Xilinx installation directory>\Vivado\<version>\data\boards
+
+* `Download the PYNQ-Z1 Master XDC constarints <https://reference.digilentinc.com/_media/reference/programmable-logic/pynq-z1/pynq-z1_c.zip>`_
 
 Overlay Tcl file
 --------------------
@@ -67,7 +83,7 @@ During the process of downloading a new overlay, the clock configuration will be
 
 
 Existing Overlays
-=========================
+-----------------------
 
 Existing overlays can be used as a starting point to create a new overlay. The *base* overlay can be found in the *boards* directory in the Pynq repository, and includes reference IP for peripherals on the board: 
 

@@ -17,7 +17,7 @@ Python productivity for Zynq (Pynq) Documentation
    5_overlays_index
    creating_overlays_index
    interrupts_index
-   7_python_package
+   python_package
    modules
    verification
    image_build

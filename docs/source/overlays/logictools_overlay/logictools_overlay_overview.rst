@@ -1,11 +1,11 @@
  
-Digital Interfacing Overlay overview
+Logictools overview
 ======================================
 
 Introduction
 --------------------
 
-The logictools consists programmable hardware blocks for interfacing to external digital logic circuits. A programmable switch connects the inputs and outputs from the hardware blocks to Zynq IO pins. The logictools overlay can also capture data from the IO interface for analysis and debug. 
+The *logictools* overlay consists of programmable hardware blocks to connect to external digital logic circuits. Finite state machines, boolean logic functions and digital patterns can be generated from Pythong. A programmable switch connects the inputs and outputs from the hardware blocks to external IO pins. The logictools overlay can also has a trace analyzer to capture data from the IO interface for analysis and debug. 
 
 Logictools functions
 ---------------------
@@ -17,13 +17,13 @@ The logictools overlay includes four main hardware blocks:
 * Boolean Generator
 * Trace Analyzer
 
-The *Pattern Generator* can be programmed to generate arbitrary  patterns and stream the pattern to IO pins. 
+The *Pattern Generator* can be programmed to generate and stream digital patterns to the IO pins. This can be used as a stimulus to an external circuit. 
 
-The *FSM Generator* can create a finite state machine from a Python description. The inputs and outputs of the FSM can be connected to external IO pins.
+The *FSM Generator* can create a finite state machine from a Python description. The inputs and outputs and states of the FSM can be connected to external IO pins.
 
-The *Boolean Function Builder* can be create combinatorial boolean functions. The external IO pins are used as inputs and outputs. 
+The *Boolean Generator* can create combinatorial boolean logic functions. The external IO pins are used as inputs and outputs. 
 
-The *Trace Analyzer* can capture and stream IO signals to the PS DRAM for analysis in the Python environment. The Trace Analyzer can be used standalone to capture external IO signals, or used in combination with the other three logictools functions to monitor data to and from the other blocks.  E.g. the tracebuffer can be used with the pattern generator to verify the data sent to the output pins. or on the FSM to check the input signals. 
+The *Trace Analyzer* can capture IO signals and stream the data to the PS DRAM for analysis in the Python environment. The Trace Analyzer can be used standalone to capture external IO signals, or used in combination with the other three logictools functions to monitor data to and from the other blocks.  E.g. the tracebuffer can be used with the pattern generator to verify the data sent to the external pins, or with the FSM to check the input, output or states to verify or debug a design. 
 
 
 Logictools overlay block diagram
@@ -32,56 +32,64 @@ Logictools overlay block diagram
 .. image:: ../../images/logictools_bd.png
    :align: center
    
-The builders are connected to an interface switch. The interface switch is connected to Zynq IO pins and can be programmed to route any of the available IO to the builders. 
 
-The Pattern Generator and FSM Generator are connected to a DMA which is used to stream configuration data to the builders. 
+The logictools overlay contains a MicroBlaze subsystem which controls the other blocks in the design, including the Interface Switch. 
 
-The TA taps into all the IO signals, and has a connection through the DMA back to the PS DRAM. 
+The logictools hardware blocks are connected to an interface switch. The interface switch is attached to IO pins and can be programmed to connect any of the IO to the logictools hardware blocks. 
 
-The logictools overlay contains a MicroBlaze which controls the other blocks in the design, including the Interface Switch. 
+The Pattern Generator and FSM Generator are connected to a DMA which can be controlled from Python. The DMA is used to stream configuration data to the Pattern Generator and FSM. 
 
-logictools overlay Project files
+The Trace Analyzer is connected to a DMA which is used to stream trace data back to the PS DRAM, where it can be analyzed from Python. 
+
+
+Logictools IP and  project files
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-All source code for the hardware blocks is provided, and each block can also be reused standalone in a custom overlay. 
+All source code for the hardware blocks is provided. Each block can also be reused standalone in a custom overlay. 
 
-The project files for the logictools overlay overlay can be found here:
+The source files for the logictools IP can be found in the same location as the other PYNQ IP:
+
+.. code-block:: console
+
+   ``<GitHub Repository>/boards/ip``
+
+
+The project files for the logictools overlay(s) can be found here:
 
 .. code-block:: console
 
    ``<GitHub Repository>/boards/<board>/logictools``
 
-
-The makefile and .tcl file can be used to rebuild the overlay. The logictools overlay overlay includes IP from the Vivado library, and PYNQ IP. PYNQ IP can be found in directory:
-
-.. code-block:: console
-
-   ``<GitHub Repository>/boards/ip`` 
-
+   
 Operation
 --------------------
 
-There are three builders, the Boolean Function Builder, FSM Generatorand the Pattern Generator. The Trace Analyzer is consider seperately to the builders. 
+The FSM, Boolean, and Pattern generators operate in a similar way, and will be conisdered together. The Trace Analyzer will be considered seperately. 
+
+Logictools Generators
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
    .. code-block:: Python
 
       builders = {BFB, SMB, DPB}
 
-Each builder has the following methods:
+Each generator has the following methods:
 
-* ``setup()`` - configure the builder and prepare Interface Switch configuration
-* ``run()`` - configure Interface Switch, and start the builder running and apply settings to the Interface Switch
-* ``stop()`` - stop and disconnect the builder from the IO
-* ``reset()`` - clear the builder configuration
+* ``setup()`` - configure the block and prepare Interface Switch configuration
+* ``run()`` - connect IO and start the block running
+* ``stop()`` - disconnect IO and stop the block running
+* ``reset()`` - clear the block configuration
+* ``trace()`` - enable/disable trace
 
 
-The trace for each block can be enabled/disabled and configured with the ``trace()`` method.
+Any one of these blocks, or any combination can be configured and run synchronously. 
 
-Any one of these builders, or any combination of these builders can be configured and run synchronously. 
+Initial state
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-The interface switch will be connected to external IO pins. Initially, all IO accessible to the logictools overlay are configured as inputs. This prevents the inadvertent driving of any external circuitry that is connected before the logictools overlay has been configured. 
+The interface switch is attached to the external IO pins. Initially, all IO accessible to the logictools overlay are configured as inputs. This prevents the inadvertent driving of any external circuitry that is connected to those pins before the logictools overlay has been configured. 
 
-The Pattern Generator contains BRAM to store the pattern to be generated. The BRAM will be configured with zeros initially. 
+The Pattern Generator contains BRAM to store the pattern to be generated. The BRAM is configured with zeros initially. 
 
 Similarly, the FSM Generator configuration is stored in a BRAM which is also configured with zeros initially. 
 
@@ -113,13 +121,16 @@ When stepping the Pattern Generator, it will step until the end of the configure
 
 The FSM Generator can be single stepped indefinitely. 
 
-
 Stopping
 ^^^^^^^^^^^^^^^^^^
 
 If a builder is running, it must be stopped before running or stepping it again. Once a builder is stopped, its outputs are disconnected from the IO.
 
-  
+Trace
+^^^^^^^^^^^^^^^^^^^
+
+Trace is enabled by default for each block. i.e. the Trace Analayzer will capture trace data for all connected blocks by default. The ``trace()`` method enables/disables the Trace Analyzer for that block.  
+
  
 Pattern Generator
 -------------------------------

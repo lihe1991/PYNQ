@@ -25,9 +25,4 @@ The base overlay can include IP from the Vivado library, and custom IP. Any cust
 
     ``<GitHub Repository>/boards/ip`` 
 
-For more details on rebuilding the overlay, or creating a new overlay, see the `Overlay Design Methodology <../overlay_design_methodology_index.html>`_ section. 
-
-Porting PYNQ
---------------
-If PYNQ is ported to another board, a base overlay should be created and used as the default PYNQ overlay for that board. 
-
+For more details on rebuilding the overlay, or creating a new overlay, see the `Overlay Design Methodology <../../overlay_design_methodology_index.html>`_ section. 
