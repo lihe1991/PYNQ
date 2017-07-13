@@ -2,14 +2,14 @@
 Video Subsystem
 ============================
 
-The Video subsystem consists of a HDMI-in block, a HDMI-out block, and a Video DMA.  
+The Video subsystem consists of a HDMI-in block, a HDMI-out block, and a Video DMA.
    
 .. image:: ../../images/video_subsystem.png
    :align: center
    
-Video data can be captured from the HDMI-in, and streamed to DRAM, or directly to the HDMI-out by the VDMA. Data can also be streamed from DRAM to the HDMI-out. 
+Video data can be captured from the HDMI-in, and streamed to DRAM using the Video DMA, or streamed from DRAM to the HDMI-out.
 
-The video subsystem also supports simple color space conversions from YCrCb to RGB and back. This is accomplished  by hardware blocks integrated into both the HDMI-in and HDMI-out blocks. 
+The video subsystem also supports color space conversions, e.g. from YCrCb to RGB and back, and changing the number of channels in each pixel. This is accomplished by hardware blocks integrated into both the HDMI-in and HDMI-out blocks. 
 
 HDMI-In
 ------------
@@ -31,17 +31,17 @@ The HDMI-out is similar to HDMI-in. It has a Pixel Pack block (instead of the *U
 Color space conversion
 ---------------------------
 
-The video subsystem supports conversion between different color spaces. The default color space is BGR. Supported color spaces include: RGB (24-bit), RGBA (32-bit), BGR (24-bit), YCbCr (24-bit), and grayscale (8-bit).
+The video subsystem supports general color space conversions so that frames in DRAM are in a format appropriate for any subsequent processing. The default color space is BGR(24-bit) with RGB (24-bit), RGBA (32-bit), BGR (24-bit), YCbCr (24-bit), and grayscale (8-bit) provided as built-in options.
 
 The colorspace converter operates on each pixel independently using a 3x4 matrix to transform the pixels. The converter is programmed with a list of twelve coefficients in the following order:
 
-==== === === === ===
-     in1 in2 in3  1 
-==== === === === ===
-out1 c1  c2  c3  c10
-out2 c4  c5  c6  c11
-out3 c7  c8  c9  c12
-==== === === === ===
+======= === === === ===
+Channel in1 in2 in3  1 
+======= === === === ===
+out1    c1  c2  c3  c10
+out2    c4  c5  c6  c11
+out3    c7  c8  c9  c12
+======= === === === ===
 
 Each coefficient should be a floating point number between -2 and +2.
 
@@ -55,41 +55,33 @@ The pixels to and from the HDMI frontends are in BGR order so a list of coeffici
      1, 0, 0,
      0, 0, 0]
 
+
+reversing the order of the channels and not adding any bias.
  
-reversing the order of the pixels and not adding any bias.
- 
-The resulting output order would be:
-
-
-==== === === === ==
-out1 c3  c2  c1  0 
-out2 c6  c5  c4  0 
-out3 c9  c8  c7  0 
-==== === === === ==
-
 The driver for the colorspace converters has a single property that contains the list of coefficients.
 
-colorspace_in = base.video.hdmi_in.color_convert
-colorspace_out = base.video.hdmi_out.color_convert
+.. code-block:: Python
 
-bgr2rgb = [0, 0, 1,
-           0, 1, 0, 
-           1, 0, 0,
-           0, 0, 0]
+    colorspace_in = base.video.hdmi_in.color_convert
+    colorspace_out = base.video.hdmi_out.color_convert
 
-colorspace_in.colorspace = bgr2rgb
-colorspace_out.colorspace = bgr2rgb
+    bgr2rgb = [0, 0, 1,
+               0, 1, 0, 
+               1, 0, 0,
+               0, 0, 0]
 
-colorspace_in.colorspace
+    colorspace_in.colorspace = bgr2rgb
+    colorspace_out.colorspace = bgr2rgb
+
 
 Pixel Format
 ----------------
-The default pixel format for the HDMI frontends is 24-bit. This can be converted to 8,24 or 32 bits. 
+The default pixel format for the HDMI frontends is 24-bit - that is 3x8-bit channels. This can be converted to 8,16, 24 or 32 bits. 
 
-8-bit mode selects the first channel in the pixel (and drops the next 16-bits)
+8-bit mode selects the first channel in the pixel (and drops the other two)
+16-bit mode can either select the first two channels or select the first and performs chroma resampling of the other two resulting in 4:2:2 formatted frames.
 24-bit mode is pass-through, and doesn't change the format
 32-bit mode pads the stream with additional 8-bits.
-
 
 .. code-block:: Python
 
@@ -97,9 +89,8 @@ The default pixel format for the HDMI frontends is 24-bit. This can be converted
     pixel_out = base.video.hdmi_out.pixel_unpack
 
     pixel_in.bits_per_pixel = 8
-    pixel_out.bits_per_pixel = 8
-
-    pixel_in.bits_per_pixel
+    pixel_out.bits_per_pixel = 16
+    pixel_out.resample = False
 
 
 Video processing
@@ -114,11 +105,11 @@ There are 3 main ways that some processing could be carried out on a Video pipel
 Processing in Python
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The HDMI input is streamed into a framebuffer in DRAM and is stored as a C array. The video subsystem can be set up to stream from the framebuffer directly to the HDMI out. However, this would not allow any processing in Python. 
+Input and output frames are represented as numpy arrays frames are read from the HDMI input and written to the HDMI output. The HDMI input will return the most recent complete frame received or block if necessary until the frame is ready. The HDMI output will continue outputting the last frame written until a new frame is provided.
 
-The video subsystem can be set up to capture the input frame to a framebuffer, and for the HDMI out to read a frame from another framebuffer. This would allow reading of the input frame in Python, and some processing to be carried out, and the processed frame to be written to the HDMI out buffer. 
+As frames are numpy arrays they can be directly used in other Python libraries including the Python OpenCV libraries. 
 
-The frame objects are captured as Numpy arrays. This allows them to be directly used in other Python libraries including the Python OpenCV libraries. 
+Examples of using the video API with OpenCV can be found in the video notebooks.
 
 Processing video in the PS will be relatively slow. Where possible low level processing should be carried out in the PL. The video subsystem supports basic color space and pixel type conversions in hardware before passing a frame to the Python environment to improve performance of OpenCV and processing by other libraries. 
 
@@ -136,7 +127,7 @@ An IP block can be added to an overlay and connected to an available interface. 
 
 Note that the DRAM is likely to be a bottleneck for video processing. The Video data is written to DRAM, then read from DRAM and send to the custom IP and is written back to DRAM, where it is read by the HDMI out. 
 
-For the PYNQ-Z1 which has a 16-bit DRAM, up to 1080p grayscale (8-bits per pixel) can be processed at ~60fps, but this is very close to the total memory bandwidth of the system. 
+For the PYNQ-Z1 which has a 16-bit DRAM, up to 1080p cwgraysc (8-bits per pixel) can be processed at ~60fps alongside the framebuffer memeory bandwidth, but this is very close to the total memory bandwidth of the system. 
 
 Examples
 ------------------
@@ -148,20 +139,19 @@ Set up an instance of the HDMI-in, and HDMI-out.
 
 .. code-block:: Python
 
-    from pynq.lib.video import HDMIIn, HDMIOut
+    from pynq import Overlay
 
-    hdmi_in = HDMIIn('video')
-    hdmi_out = HDMIOut('video')
+    base = Overlay('base.bit')
+    hdmi_in = base.video.hdmi_in
+    hdmi_out = base.video.hdmi_out
 
-The HDMI-in color space can be specified using the ``configure`` function. This step is optional, as HDMI will detect the color space from the input stream. The HDMI-in *mode* can be used to configure the HDMI-out block. This specifies the output color space. 
+The HDMI-in interace is enabled using the ``configure`` function which can optionally take a colorspace parameter. If no colorspace is specified then 24-bit BGR is used by default. The HDMI-in *mode* can be used to configure the HDMI-out block. This specifies the output color space and resolution. 
 
 .. code-block:: Python
 
     hdmi_in.configure()
     hdmi_out.configure(hdmi_in.mode)
     
-Supported color spaces are:
-
 Once the HDMI controllers have been configured, they can be started:
 
 .. code-block:: Python
@@ -175,7 +165,7 @@ To connect a simple stream from HDMI-in to HDMI-out, the two streams can be tied
 
     hdmi_in.tie(hdmi_out)
 
-This takes the unmodified input stream and passes it directly to the output, but doesn't allow processing of the frames. To do this, individual frames can also be read and written. 
+This takes the unmodified input stream and passes it directly to the output. While the input and output are tied frames can still be read from the input but any call to ``hdmi_out.writeframe`` will end the tie.
 
 .. code-block:: Python
 
