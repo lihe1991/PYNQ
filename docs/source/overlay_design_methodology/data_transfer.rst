@@ -73,6 +73,13 @@ There are also GPIO, which are simple wires between PS and PL.
 
 GPIO wires from the PS can be used as a very simple way to communicate between PS and PL. For example, GPIO can be used as control signals for resets, or interrupts. 
 
+
+Interrupts
+-------------
+
+Finally there are dedicated interrupts which are linked with asyncio events in the python environment. Dedicated interrupts should be attached to an AXI Interrupt controller which is in turn attached to the first interrupt line to the processing system. This arrangement leaves the other interrupts free for IP not controlled by PYNQ directly such as SDSoC accelerators.
+
+
 PYNQ classes 
 ===============
 
