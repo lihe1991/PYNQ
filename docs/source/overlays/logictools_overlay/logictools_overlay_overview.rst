@@ -71,7 +71,7 @@ Logictools Generators
 
    .. code-block:: Python
 
-      builders = {BFB, SMB, DPB}
+      generators = {BFB, SMB, DPB}
 
 Each generator has the following methods:
 
@@ -98,15 +98,15 @@ The Boolean Generator is initially set to <>
 Setup 
 ^^^^^^^^^^^^^^^^^^
 
-Each builder must be configured using the ``setup()`` method before it can be used. This defines a configuration for the block, and the configuration for the Interface Switch to connect the external IO to the builder. Note that the configuration is defined, but the IO are not connected during setup. 
+Each block must be configured using the ``setup()`` method before it can be used. This defines a configuration for the block, and the configuration for the Interface Switch to connect the external IO to the builder. Note that the configuration is defined, but the IO are not connected during setup. 
 
 
 Running
 ^^^^^^^^^^^^^^^^^^
 
-Once a builder has been setup, it can be run. The external IO are connected to the builder though the interface switch, and the hardware block will start operating. 
+Once a block has been setup, it can be run. The external IO are connected to the block though the interface switch, and the hardware block will start operating. 
 
-Running will start the builder running in continuous mode by default. This is the only mode for the Boolead Generator. 
+Running will start the block running in continuous mode by default. This is the only mode for the Boolead Generator. 
 
 In continuous mode, the Pattern Generator generates its pattern continuously, looping back to the start when it reaches the end of the pattern. The FSM Generator will continue to run until it is stopped. 
 
@@ -124,7 +124,7 @@ The FSM Generator can be single stepped indefinitely.
 Stopping
 ^^^^^^^^^^^^^^^^^^
 
-If a builder is running, it must be stopped before running or stepping it again. Once a builder is stopped, its outputs are disconnected from the IO.
+If a block is running, it must be stopped before running or stepping it again. Once a builder is stopped, its outputs are disconnected from the IO.
 
 Trace
 ^^^^^^^^^^^^^^^^^^^
@@ -236,10 +236,10 @@ Example
    
 display_graph()
 
-Boolean Function Builder
+Boolean Generator
 -------------------------------------------
 
-The Boolead Generator supports boolean functions of one up to five inputs on each output pin. AND, OR, NOT, and XOR operators are supported.
+The Boolean Generator supports boolean functions of one up to five inputs on each output pin. AND, OR, NOT, and XOR operators are supported.
 
 Example 
 ^^^^^^^^^^^^^^^^^^^^^
@@ -253,7 +253,7 @@ The following list defines four combinatorial functions on pins D8-11, which are
 
    from logictools import BoolGenerator
 
-   bf_builder = BoolGenerator
+   bg = BoolGenerator
    function_specs = ['D3 = D0 ^ D1 ^ D2',
                    'D7 = D3 & D4 & D5']
                    
@@ -270,22 +270,22 @@ The function configurations can also be labelled:
                    
    function_specs['f3'] = 'D11 = D12 + D14'
 
-Once the expressions have been defined, they can be passed to the BooleanBuilder function.
+Once the expressions have been defined, they can be passed to the BooleanGenerator function.
 
 .. code-block:: Python
 
-   bf_builder.setup(function_specs)
+   bg.setup(function_specs)
 
 
 .. code-block:: Python
 
-   bf_builder.run() # run continuously
+   bg.run() # run continuously
 
 To reconfigure the Boolead Generator, or to disconnect the IO pins, stop it. 
 
 .. code-block:: Python
 
-   bf_builder.stop()
+   bg.stop()
 
 
 Trace Analyzer

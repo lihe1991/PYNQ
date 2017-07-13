@@ -32,6 +32,8 @@ Documentation updated:
       
    * Video API has been changed to support to support new video architecture, Numpy objects, and color space/pixel width conversion 
    * New PynqMicroblaze module to allow control of a MicroBlaze subsystem
+   * New AxiGPIO driver
+   
    
 * New Python Packages 
 
