@@ -3,7 +3,7 @@ Pattern Generator
 
 The Pattern Builder can generate arbitrary digital patterns that are programmable from Python. 
 
-.. image:: ../../images/pattern_generator.jpg
+.. image:: ../../images/pattern_generator.png
    :align: center
 
 The Trace Analyzer has an internal Block Memory which stores a pattern that can be streamed to an external interface. The Trace Analyzer is controlled by a MicroBlaze subsystem. It is connected to a DMA, also controlled by the MicroBlaze subsystem which is used to load configuration information, including a pattern to the internal memory. 

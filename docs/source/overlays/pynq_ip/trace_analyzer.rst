@@ -23,7 +23,7 @@ The trace analyzer monitors the external PL Input/Output Blocks (IOBs) on the PM
 
 The trace analyzer is connected to all 3 signals for each IOP (Pmod and Arduino).
 
-.. image:: ../../images/trace_analyzer.jpg
+.. image:: ../../images/trace_analyzer.png
    :align: center
 
 This allows the trace analyzer to read the tri-state, determine if the IOB is in input, or output mode, and read the appropriate trace data. 

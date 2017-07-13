@@ -52,7 +52,7 @@ A template for a hierarchy driver is as follows:
 
     class MyHierarchy(DefaultHierarchy)
         def __init__(self, description):
-           super().__init__(description)
+            super().__init__(description)
 
         @staticmethod
         def checkhierarchy(description):
