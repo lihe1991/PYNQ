@@ -12,4 +12,3 @@ PYNQ Overlays
    overlays/peripherals_index
    overlays/iop_index
    overlays/pynq_ip_index
-   overlays/community_examples

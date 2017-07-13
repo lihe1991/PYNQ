@@ -14,9 +14,25 @@ Image release:
 Documentation updated:  
 
 * Pynq API/driver changes
+   * Overlay() automatically downloads an overlays on instantiation. Explicit .download() is not required
+   * DMA driver replaced with new version
+   * The iop subpackage has been restructured into lib.arduino and lib.pmod.
 
-* Added Linux Packages
+   code-block:: Python
+   
+      from pynq.iop import Arduino_Analog
+   
+   is replaced by:
 
+   code-block:: Python
+   
+      from pynq.lib.arduino import Arduino_Analog
+
+      * Added Linux Packages
+      
+   * Video API has been changed to support to support new video architecture, Numpy objects, and color space/pixel width conversion 
+   * New PynqMicroblaze module to allow control of a MicroBlaze subsystem
+   
 * New Python Packages 
 
 * Updated Python Pacakges 
@@ -24,13 +40,21 @@ Documentation updated:
 * Other changes
 
 * IP changes
-
+   * Updated trace buffer
+   * Added new logictools overlay IP: Pattern Generator, Boolean Generator, FSM Generator
 
 * Overlay changes
    * Added logictools overlay
+   * Updated to new trace buffer IP in the base overlay
    
 * Documentation changes
+   * Restructured documentation
    * Added Create Overlays section
+   * Added section on Logictools overlay
+   * Expanded Interrupts section
+   * Added PYNQ IP section
+   * Expanded IOP sections
+   * Added PYNQ image build section 
 
 Version 1.4 
 ============================
