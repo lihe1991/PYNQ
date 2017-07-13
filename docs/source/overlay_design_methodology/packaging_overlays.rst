@@ -26,7 +26,7 @@ The following example assume an overlay that exists in the root of a GitHub repo
 
 Assume the repository has the following structure:
    
-   * notebook/
+   * notebooks/
       * new_overlay.ipynb
    * new_overlay/
       * new_overlay.bit

@@ -104,6 +104,12 @@ The same location is then read and stored in *result*.
 This example assumes the memory mapped area defined for the MMIO, 0x40000000 - 0x40001000, is accessible to the PS. 
 
 
+Interrupt
+----------
+
+The ``Interrupt`` class represents a single interrupt pin in the block design. It mimics a python ``Event`` by having a single ``wait`` function that blocks until the interrupt is raised. The event will be cleared automatically when te interrupt is cleared. To construct an event, pass in fully quallified path to the pin in the block diagram, e.g. ``'my_ip/interrupt'`` as the only argument. 
+
+The implementation is built on top of asyncio, a newly added part of the python standard library. For more details on asyncio, how it can be used with PYNQ see the asyncio section of this documentation.
 
 Xlnk
 --------------
@@ -200,4 +206,4 @@ Transfer the input_buffer to the *send* DMA, and read back from the *recv* DMA t
       dma_recv.recvchannel.wait()
       
       # Output buffer:  [0 1 2 3 4]
-       
+

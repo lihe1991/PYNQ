@@ -1,48 +1,23 @@
 ********************************************
-Interrupts
+PYNQ and asyncio
 ********************************************
 
 .. contents:: Table of Contents
    :depth: 2
 
 Introduction
-=========================================
-Each IOP has its only interrupt controller. This allows IOP peripherals (IIC, SPI, GPIO, Uart, Timers) to interrupt the MicroBlaze processor inside the IOP. The IOP uses the `AXI Interrupt Controller <https://www.xilinx.com/products/intellectual-property/axi_intc.html>`_. It can be used in an IOP application in the same way as any other MicroBlaze application to manage this local interrupts.
+==================================
 
-The base overlay also has a interrupt controller connected to the interrupt pin of the Zynq PS. The overlay interrupt controller can be triggered by the MicroBlaze inside an IOP to signal to the PS and Python that an interrupt has occurred in the overlay. 
-
-.. image:: ../images/pynqz1_base_overlay_intc_pin.png
-   :align: center
-
-Interrupts in PYNQ can be handled in different ways as discused in the examples below. 
-
-*asyncio* introduces a new method of handling interrupts from within the Python code running on the ARM CPUs.  
-
-The asyncio package is a relatively new Python library, (added provisionally in Python 3.4 and declared stable in 3.6) `Python 3.6 documentation on asyncio <https://docs.python.org/3.6/whatsnew/3.6.html#asyncio>`_. 
-
-It is included in this Pynq release as part of Python 3.6.
-
-
-Asyncio
-=========
-
-Motivation 
-----------
+Many aspects of interacting with hardware involve waiting for accelerators to complete or data to available and polling is an inefficient way of doing this - especially in a language like python which can only have one executing thread at once.
 
 A Python program can use the asyncio library to manage multiple IO-bound tasks asynchronously, thereby avoiding any blocking caused by waiting for responses from slower IO subsystems.  Instead, the program can continue to execute other tasks that are ready to run.  When the previously-busy tasks are ready to resume, they will be executed in turn, and the cycle is repeated.
 
 In the Pynq framework, real-time tasks are most often implemented using the appropriate IP blocks in the programmable logic.  While such tasks are executing in the PL, they can raise interrupts on the ARM A9 CPUs at any time. Python's asyncio library provides an effective way to manage such events from asynchronous, IO-bound tasks.
 
-The asyncio library has several advantages:
+The foundation of asyncio in Pynq is the ``Interrupt`` class which provides an asyncio-style Event that can be used for waiting for interrupts to be raised. Other classes such as the regular and video DMA engines, AXI GPIO driver and the IOP interface are build on top of the interrupt event to provide asyncio coroutines for any functions that might otherwise block.
 
-* it does not require multiple threads or processes so it uses fewer system resources 
-
-* it schedules execution using cooperative multitasking so it avoids problems of race conditions and deadlocks
-
-* it uses coroutines to abstract the user from direct handling of callbacks.  This allows the user to write concurrent code in a style that preserves the familiarity of sequential code, resulting in simpler and more manageable programs
-
-Introduction to Asyncio
------------------------
+Asyncio Fundamentals
+==================================
 
 The asyncio concurrency framework relies on coroutines, futures, tasks, and an event loop.  We will introduce these briefly before demonstrating their use with some introductory examples.  
 
@@ -133,13 +108,19 @@ Any blocking call in event loop should be replaced with a coroutine. If you do n
 
 If you need blocking calls, they should be in separate threads. Compute workloads should also be in separate threads/processes. 
 
-Interrupts in PYNQ using asyncio
+
+PYNQ drivers supporting asyncio
 ==================================
 
-Asyncio can be used for managing interrupt events from the overlay. A coroutine can be run in an event loop and used to check the status of the interrupt controller in the overlay, and handle any event. Other user functions can also be run in the event loop. If an interrupt is triggered, the next time the "interrupt" coroutine is scheduled, it will service the interrupt. The responsiveness of the interrupt coroutine will depend on how frequently the user code yields control in the loop. 
+Asyncio can be used for managing a variety of potentially blocking operations in the overlay. A coroutine can be run in an event loop and used to wait for an interrupt to fire. Other user functions can also be run in the event loop. If an interrupt is triggered, any coroutines waiting on the corresponding event will be rescheduled. The responsiveness of the interrupt coroutine will depend on how frequently the user code yields control in the loop. 
 
-Interrupts in the Base Overlay
+asyncio in the Base Overlay
 ------------------------------
+
+There are three main IP subsystems in the base overlay that can be used with asyncio coroutines - GPIO peripherials, the video pipeline and the IOPs.
+
+GPIO Peripherals
+^^^^^^^^^^^^^^^^^
 
 The I/O peripherals in the base overlay will trigger interrupts when switches are toggled or buttons are pressed. Both the *Button* and *Switch* classes have a function ``wait_for_level`` and a coroutine ``wait_for_level_async`` which block until the corresponding button or switch has the specified value. This follows a convention throughout the PYNQ python API that that coroutines have an ``_async`` suffix.
 
@@ -170,7 +151,7 @@ Finally, running the event loop will cause the coroutines to be active. This cod
 
 
 IOP and Interrupts
-------------------------------
+^^^^^^^^^^^^^^^^^^^
 
 The IOP class has an ``interrupt`` member variable which acts like an *asyncio.Event* with a ``wait`` coroutine and a ``clear`` method. This event is automatically wired to the correct interrupt pin or set to ``None`` if interrupts are not available in the loaded overlay. 
 
@@ -184,6 +165,29 @@ e.g.
            warn("Interrupts not available in this Overlay")
 
 There are two options for running functions from this new IOP wrapper class. The function can be called from an external asyncio event loop (set up elsewhere), or the function can set up its own event loop and then call its asyncio function from the event loop.
+
+
+Video Pipeline
+^^^^^^^^^^^^^^^
+
+As the ``hdmi_in.readframe`` and ``hdmi_out.writeframe`` functions may potentially block if a complete frame has not yet been read or written, ``_async`` versions of these functions also exist. One use for the asynchronous versions is if frames are being transferred to a separate accelerator using a DMA engine. The DMA driver is also asyncio aware so the computation can be written as two tasks. One to retreive frames from the Video DMA and forward them to the accelerator and a second task to bring frames back from the accelerator.
+
+.. code-block:: Python
+
+    async def readframes():
+        while True:
+            frame = await hdmi_in.readframe_async()
+            dma.sendchannel.transfer(frame)
+            await dma.sendchannel.wait_async()
+            frame.freebuffer()
+
+    async def writeframes():
+        while True:
+            frame = hdmi_out.newframe()
+            dma.recvchannel.transfer(frame)
+            await dma.recvchannel.wait()
+            await hdmi_out.writeframe_async(frame)
+
 
 Async function
 ----------------------
