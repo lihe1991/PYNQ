@@ -1487,6 +1487,13 @@ proc create_root_design { parentCell } {
    CONFIG.ADDR_WIDTH {31} \
  ] $axi_register_slice_0
 
+  # Create instance: axprot_nonsecure, and set properties
+  set axprot_nonsecure [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 axprot_nonsecure ]
+  set_property -dict [ list \
+   CONFIG.CONST_VAL {2} \
+   CONFIG.CONST_WIDTH {3} \
+ ] $axprot_nonsecure
+
   # Create instance: fmch_axi_iic, and set properties
   set fmch_axi_iic [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_iic:2.0 fmch_axi_iic ]
   set_property -dict [ list \
@@ -3173,6 +3180,7 @@ proc create_root_design { parentCell } {
   connect_bd_net -net pmod1_tri_o [get_bd_pins iop_pmod1/tri_o] [get_bd_pins pmod1_buf/IOBUF_IO_T]
   connect_bd_net -net xlconcat0_dout [get_bd_pins axi_intc_0/intr] [get_bd_pins xlconcat0/dout]
   connect_bd_net -net xlconcat_0_dout [get_bd_pins ps_e_0/pl_ps_irq0] [get_bd_pins xlconcat_0/dout]
+  connect_bd_net -net xlconstant_0_dout [get_bd_pins axprot_nonsecure/dout] [get_bd_pins ps_e_0/saxigp2_arprot] [get_bd_pins ps_e_0/saxigp2_awprot] [get_bd_pins ps_e_0/saxigp4_arprot] [get_bd_pins ps_e_0/saxigp4_awprot] [get_bd_pins ps_e_0/saxigp6_arprot] [get_bd_pins ps_e_0/saxigp6_awprot]
   connect_bd_net -net xlslice_0_Dout [get_bd_ports IDT_8T49N241_RST_OUT] [get_bd_pins xlslice_0/Dout]
   connect_bd_net -net xlslice_1_Dout [get_bd_ports HDMI_RX_LS_OE] [get_bd_pins xlslice_1/Dout]
   connect_bd_net -net zynq_us_emio_gpio_o [get_bd_pins mb_iop_pmod0_intr_ack/Din] [get_bd_pins mb_iop_pmod0_reset/Din] [get_bd_pins mb_iop_pmod1_intr_ack/Din] [get_bd_pins mb_iop_pmod1_reset/Din] [get_bd_pins ps_e_0/emio_gpio_o]
