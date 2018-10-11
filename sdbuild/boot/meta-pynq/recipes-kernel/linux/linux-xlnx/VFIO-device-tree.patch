@@ -1,0 +1,46 @@
+From a1c255ab6b2d97dff15940ee8b52f4999cc6acc0 Mon Sep 17 00:00:00 2001
+From: Peter Ogden <ogden@xilinx.com>
+Date: Thu, 4 Oct 2018 06:18:46 -0400
+Subject: [PATCH] Add VFIO platform device-tree binding
+
+---
+ drivers/vfio/platform/vfio_platform.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/drivers/vfio/platform/vfio_platform.c b/drivers/vfio/platform/vfio_platform.c
+index 6561751..fa9557b 100644
+--- a/drivers/vfio/platform/vfio_platform.c
++++ b/drivers/vfio/platform/vfio_platform.c
+@@ -17,6 +17,9 @@
+ #include <linux/vfio.h>
+ #include <linux/platform_device.h>
+ 
++#include <linux/of.h>
++#include <linux/of_platform.h>
++
+ #include "vfio_platform_private.h"
+ 
+ #define DRIVER_VERSION  "0.10"
+@@ -92,11 +95,19 @@ static int vfio_platform_remove(struct platform_device *pdev)
+ 	return -EINVAL;
+ }
+ 
++static const struct of_device_id vfio_platform_ids[] = {
++	{ .compatible = "vfio-platform", },
++	{ /* sentinel */ }
++};
++
++MODULE_DEVICE_TABLE(of, vfio_platform_ids);
++
+ static struct platform_driver vfio_platform_driver = {
+ 	.probe		= vfio_platform_probe,
+ 	.remove		= vfio_platform_remove,
+ 	.driver	= {
+ 		.name	= "vfio-platform",
++		.of_match_table = vfio_platform_ids,
+ 	},
+ };
+ 
+-- 
+2.7.4
+

@@ -1,0 +1,9 @@
+the_ROM_image:
+{
+	[bootloader, destination_cpu=a53-0] petalinux_project/images/linux/zynqmp_fsbl.elf
+	[pmufw_image] petalinux_project/images/linux/pmufw.elf 
+	[destination_device=pl] boot_bitstream.bit
+	[destination_cpu=a53-0, exception_level=el-3, trustzone] petalinux_project/images/linux/bl31.elf
+	[destination_cpu=a53-0, exception_level=el-2] petalinux_project/images/linux/u-boot.elf
+	[init] cci.ini
+}

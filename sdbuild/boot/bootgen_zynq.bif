@@ -1,0 +1,6 @@
+the_ROM_image:
+{
+	[bootloader] petalinux_project/images/linux/zynq_fsbl.elf
+	boot_bitstream.bit
+	petalinux_project/images/linux/u-boot.elf
+}

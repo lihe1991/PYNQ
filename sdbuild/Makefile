@@ -22,6 +22,8 @@ KERNEL_arm := zImage
 KERNEL_aarch64 := Image
 BOOT_arm := u-boot.elf zynq_fsbl.elf
 BOOT_aarch64 := u-boot.elf zynqmp_fsbl.elf pmufw.elf bl31.elf
+BOOT_ARCH_arm := zynq
+BOOT_ARCH_aarch64 := zynqmp
 
 export CCACHEDIR
 export ROOTDIR
@@ -78,6 +80,7 @@ BOOT_ROOT_$1 := $$(BOOT_ROOT)/$1
 QEMU_$1 := $$(shell which qemu-$$(ARCH_$1)-static)
 PACKAGE_ENV_$1 := QEMU_EXE=$$(QEMU_$1) PYNQ_BOARDDIR=$$(BOARDDIR_$1) PYNQ_BOARD=$1 ARCH=$$(ARCH=$1) PACKAGE_PATH=$$(BOARDDIR_$1)/packages
 IMAGE_$1 := $$(IMAGE_ROOT)/$1-$$(VERSION).img
+BOOT_ARCH_$1 := $$(BOOT_ARCH_$$(ARCH_$1))
 
 ifeq ($$(ARCH_$1),arm)
 	TEMPLATE_$1 := zynq
@@ -113,6 +116,7 @@ bsp_$1: $$(BSP_FILES_$1)
 
 .PHONY: bsp_$1
 
+BOOT_BITSTREAM_$1 := $$(BUILD_ROOT_$1)/boot_bitstream.bit
 PL_PROJ_$1 := $$(BUILD_ROOT_$1)/petalinux_project
 PL_CONFIG_$1 := $$(PL_PROJ_$1)/project-spec/configs/config
 MODULES_$1 := $$(PL_PROJ_$1)/build/tmp/deploy/images/modules-plnx_$$(ARCH_$1).tgz
@@ -129,9 +133,17 @@ $$(PL_PROJ_$1): $$(BSP_TARGET_$1)
 	echo 'CONFIG_SUBSYSTEM_ETHERNET_MANUAL_SELECT=y' >> $$(PL_CONFIG_$1)
 	petalinux-config --oldconfig -p $$(PL_PROJ_$1)
 
-$$(BOOT_ROOT_$1)/BOOT.BIN : $$(BOOT_DEPENDS_$1) $$(BOOT_BITSTREAM_$1) | $$(BOOT_ROOT_$1)
-	cd $$(BOOT_ROOT_$1) && petalinux-package --boot --fpga $$(BITSTREAM_ABS_$1) --u-boot -p $$(PL_PROJ_$1) --force
-	cp -f $$(PL_PROJ_$1)/images/linux/BOOT.BIN $$(BOOT_ROOT_$1)
+CCI_$1 := $$(BUILD_ROOT_$1)/cci.ini
+BOOT_BIF_$1 := $$(BUILD_ROOT_$1)/bootgen_$$(BOOT_ARCH_$1).bif
+
+$$(BOOT_BITSTREAM_$1): $$(BITSTREAM_ABS_$1)
+	cp $$< $$@
+
+$$(BUILD_ROOT_$1)/%: $(CURDIR)/boot/%
+	cp $$< $$@ 
+
+$$(BOOT_ROOT_$1)/BOOT.BIN : $$(BOOT_DEPENDS_$1) $$(BOOT_BITSTREAM_$1) $$(BOOT_BIF_$1) $$(CCI_$1) | $$(BOOT_ROOT_$1)
+	cd $$(BUILD_ROOT_$1) && bootgen -w -o $$@ -arch $$(BOOT_ARCH_$1) -image $$(BOOT_BIF_$1)
 
 $$(BOOT_ROOT_$1)/image.ub : $$(BUILD_ROOT_$1)/image.its $$(BUILD_ROOT_$1)/system.dtb $$(BUILD_ROOT_$1)/$$(KERNEL_$$(ARCH_$1)) | $$(BOOT_ROOT_$1)
 	cd $$(BOOT_ROOT_$1) && mkimage -f $$(BUILD_ROOT_$1)/image.its $$@

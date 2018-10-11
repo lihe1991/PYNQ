@@ -7,6 +7,7 @@ SRC_URI_append = "\
     file://pynq_bootargs.dtsi \
     file://pynq_zynq.dtsi \
     file://pynq_zynqmp.dtsi \
+    file://pynq_vfio.dtsi \
 "
 
 # PYNQ_BOARDNAME="${BB_ORIGENV[PYNQ_BOARDNAME]}"
