@@ -34,13 +34,13 @@ import re
 import warnings
 from copy import deepcopy
 from .mmio import MMIO
-from .ps import Clocks, CPU_ARCH_IS_SUPPORTED, CPU_ARCH
+from .ps import CPU_ARCH_IS_SUPPORTED, CPU_ARCH
 from .pl import PL
-from .pl import Bitstream
 from .pl import TCL
 from .pl import HWH
 from .pl import get_tcl_name
 from .pl import get_hwh_name
+from .pl import PYNQ_PATH
 from .interrupt import Interrupt
 from .gpio import GPIO
 
@@ -188,6 +188,76 @@ def _build_docstring(description, name, type_):
     return '\n    '.join(lines)
 
 
+class Bitstream:
+    """This class instantiates the meta class for programmable logic bitstream.
+
+    Attributes
+    ----------
+    bitfile_name : str
+        The absolute path of the bitstream.
+    timestamp : str
+        Timestamp when loading the bitstream. Format:
+        year, month, day, hour, minute, second, microsecond
+
+    """
+    def __init__(self, bitfile_name, partial=False):
+        """Return a new Bitstream object.
+
+        Users can either specify an absolute path to the bitstream file
+        (e.g. '/home/xilinx/src/pynq/bitstream/base.bit'),
+        or a relative path within an overlay folder.
+        (e.g. 'base.bit' for base/base.bit).
+
+        Note
+        ----
+        self.bitstream always stores the absolute path of the bitstream.
+
+        Parameters
+        ----------
+        bitfile_name : str
+            The bitstream absolute path or name as a string.
+        partial :
+            Flag to indicate whether or not the bitstream is partial.
+
+        """
+        super().__init__()
+
+        if not isinstance(bitfile_name, str):
+            raise TypeError("Bitstream name has to be a string.")
+
+        bitfile_abs = os.path.abspath(bitfile_name)
+        bitfile_overlay_abs = os.path.join(PYNQ_PATH,
+                                           'overlays',
+                                           bitfile_name.replace('.bit', ''),
+                                           bitfile_name)
+
+        if os.path.isfile(bitfile_name):
+            self.bitfile_name = bitfile_abs
+        elif os.path.isfile(bitfile_overlay_abs):
+            self.bitfile_name = bitfile_overlay_abs
+        else:
+            raise IOError('Bitstream file {} does not exist.'
+                          .format(bitfile_name))
+
+        self.timestamp = ''
+        self.partial = partial
+
+    def download(self, tcl_file=None, hwh_file=None):
+        """The method to download the bitstream onto PL.
+
+        Note
+        ----
+        The class variables held by the singleton PL will also be updated.
+
+        Returns
+        -------
+        None
+
+        """
+        self.timestamp = PL.download(self.bitfile_name, tcl_file, hwh_file)
+        
+
+
 class Overlay(Bitstream):
     """This class keeps track of a single bitstream's state and contents.
 
@@ -292,9 +362,13 @@ class Overlay(Bitstream):
 
         hwh_path = get_hwh_name(self.bitfile_name)
         tcl_path = get_tcl_name(self.bitfile_name)
+        self.tcl_file = None
+        self.hwh_file = None
         if os.path.exists(hwh_path):
             self.parser = HWH(hwh_path)
+            self.hwh_file = hwh_path
         elif os.path.exists(tcl_path):
+            self.tcl_file = tcl_path
             self.parser = TCL(tcl_path)
         else:
             raise ValueError("Cannot find HWH or TCL file.")
@@ -340,17 +414,7 @@ class Overlay(Bitstream):
         None
 
         """
-        for i in self.clock_dict:
-            enable = self.clock_dict[i]['enable']
-            div0 = self.clock_dict[i]['divisor0']
-            div1 = self.clock_dict[i]['divisor1']
-            if enable:
-                Clocks.set_pl_clk(i, div0, div1)
-            else:
-                Clocks.set_pl_clk(i)
-
-        super().download()
-        PL.reset(self.parser)
+        super().download(self.tcl_file, self.hwh_file)
 
     def is_loaded(self):
         """This method checks whether a bitstream is loaded.
@@ -364,8 +428,6 @@ class Overlay(Bitstream):
             True if bitstream is loaded.
 
         """
-        PL.client_request()
-        PL.server_update()
         if not self.timestamp == '':
             return self.timestamp == PL._timestamp
         else:
