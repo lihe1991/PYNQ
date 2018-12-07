@@ -9,7 +9,7 @@ EMBEDDEDSW_DIR ?= embeddedsw
 # INC - include directory with the -I prefix
 
 # ARCH := $(shell uname -p)
-ARCH := $(shell uname -p)
+PYNQ_BUILD_ARCH ?= $(shell uname -p)
 ESW_SRC := $(filter-out %_g.c, $(foreach lib, $(ESW_LIBS), $(wildcard $(EMBEDDEDSW_DIR)/XilinxProcessorIPLib/drivers/$(lib)/src/*.c)))
 ESW_INC := $(patsubst %, -I$(EMBEDDEDSW_DIR)/XilinxProcessorIPLib/drivers/%/src, $(ESW_LIBS))
 OS_INC := -I$(EMBEDDEDSW_DIR)/lib/bsp/standalone/src/common -I$(EMBEDDEDSW_DIR)/lib/bsp/standalone/src/arm/common/gcc -I$(EMBEDDEDSW_DIR)/lib/bsp/standalone/src/arm/common
@@ -19,8 +19,8 @@ COMMON_SRC_aarch64 := $(wildcard common/aarch64/*.c)
 COMMON_INC := -Icommon
 COMMON_INC_aarch64 := -Icommon/aarch64
 
-ALL_SRC := $(SRC) $(COMMON_SRC) $(COMMON_SRC_$(ARCH)) $(ESW_SRC)
-ALL_INC := $(INC) $(COMMON_INC) $(COMMON_INC_$(ARCH)) $(ESW_INC) $(OS_INC) $(OS_INC_$(ARCH))
+ALL_SRC := $(SRC) $(COMMON_SRC) $(COMMON_SRC_$(PYNQ_BUILD_ARCH)) $(ESW_SRC)
+ALL_INC := $(INC) $(COMMON_INC) $(COMMON_INC_$(PYNQ_BUILD_ARCH)) $(ESW_INC) $(OS_INC) $(OS_INC_$(PYNQ_BUILD_ARCH))
 
 all: $(LIB_NAME)
 
