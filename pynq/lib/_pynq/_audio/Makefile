@@ -14,6 +14,6 @@ uio.o
 endif
 
 all:	
-	$(CC) -fPIC $(INC_SRC) $(INC_BSP) -c -g3 -ggdb $(C_SRC)
-	$(CXX) -g3 -ggdb -shared -fPIC -rdynamic $(OBJSC) -Wl,--start-group $(LIBS) -Wl,--end-group -o libaudio.so
+	$(CC) -fPIC $(INC_SRC) $(INC_BSP) -c -g3 -ggdb $(C_SRC) $(CFLAGS)
+	$(CXX) -g3 -ggdb -shared -fPIC -rdynamic $(OBJSC) -Wl,--start-group $(LIBS) -Wl,--end-group -o libaudio.so $(CFLAGS) $(LDFLAGS)
 	rm *.o
