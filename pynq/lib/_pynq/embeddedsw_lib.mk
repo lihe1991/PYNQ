@@ -25,4 +25,4 @@ ALL_INC := $(INC) $(COMMON_INC) $(COMMON_INC_$(ARCH)) $(ESW_INC) $(OS_INC) $(OS_
 all: $(LIB_NAME)
 
 $(LIB_NAME): $(EMBEDDEDSW_DIR)
-	gcc -o $(LIB_NAME) -shared -fPIC $(ALL_INC) $(ALL_SRC)
+	$(CC) -o $(LIB_NAME) -shared -fPIC $(ALL_INC) $(ALL_SRC)
