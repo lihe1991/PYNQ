@@ -302,13 +302,14 @@ if len(sys.argv) > 1 and sys.argv[1] == 'install' and CPU_ARCH_IS_SUPPORTED:
         run_make("pynq/lib/_pynq/_displayport/", "pynq/lib/video/", "libdisplayport.so")
         run_make("pynq/lib/_pynq/_xhdmi/", "pynq/lib/video/", "libxhdmi.so")
         run_make("pynq/lib/_pynq/_xiic/", "pynq/lib/", "libiic.so")
-    backup_notebooks()
-    copy_common_notebooks()
-    copy_board_notebooks()
-    copy_overlay_notebooks()
-    copy_documentation_files()
-    rename_notebooks()
-    change_ownership()
+    if notebooks_dir:
+        backup_notebooks()
+        copy_common_notebooks()
+        copy_board_notebooks()
+        copy_overlay_notebooks()
+        copy_documentation_files()
+        rename_notebooks()
+        change_ownership()
 
 
 if (CPU_ARCH == ZYNQ_ARCH):
