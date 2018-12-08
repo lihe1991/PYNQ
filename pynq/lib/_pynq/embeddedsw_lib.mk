@@ -25,4 +25,4 @@ ALL_INC := $(INC) $(COMMON_INC) $(COMMON_INC_$(PYNQ_BUILD_ARCH)) $(ESW_INC) $(OS
 all: $(LIB_NAME)
 
 $(LIB_NAME): $(EMBEDDEDSW_DIR)
-	$(CC) -o $(LIB_NAME) -shared -fPIC $(ALL_INC) $(ALL_SRC)
+	$(CC) -o $(LIB_NAME) -shared -fPIC $(ALL_INC) $(ALL_SRC) $(CFLAGS) $(LDFLAGS)
