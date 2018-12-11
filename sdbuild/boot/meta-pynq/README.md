@@ -16,19 +16,7 @@ include PYNQ. It is specific to version 2018.2.
 Add the required layers
 -----------------------
 
-Clone the OpenEmbedded repositories - we need some packages that aren't
-included in the PetaLinux. We also need to check out the correct version
-
-```
-    git clone git://git.openembedded.org/meta-openembedded
-    cd meta-openembedded
-    git checkout rocko
-```
-
-Now we can run `petalinux-config` in the PetaLinux project and add two new user layers  
-
- 1) This directory
- 2) meta-openembdedded/meta-python
+Run `petalinux-config` in the PetaLinux project and add this directory as a user layer
 
 Add PYNQ to the filesystem target
 ---------------------------------

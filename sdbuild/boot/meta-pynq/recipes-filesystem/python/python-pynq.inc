@@ -43,6 +43,7 @@ BBCLASSEXTEND = "native nativesdk"
 inherit update-rc.d
 INITSCRIPT_PACKAGES = "${PN}"
 INITSCRIPT_NAME = "pl_server_init"
+INITSCRIPT_PARAMS = "start 20 S ."
 
 do_compile_prepend() {
 export PYNQ_JUPYTER_NOTEBOOKS=""

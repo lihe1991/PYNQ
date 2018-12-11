@@ -13,7 +13,7 @@ dir=""
 cmd="start_pl_server.py"
 user=""
 
-name=`basename $0`
+name=`pl_server_init`
 pid_file="/var/run/$name.pid"
 stdout_log="/var/log/$name.log"
 stderr_log="/var/log/$name.err"
@@ -23,7 +23,7 @@ get_pid() {
 }
 
 is_running() {
-    [ -f "$pid_file" ] && ps -p `get_pid` > /dev/null 2>&1
+    [ -f "$pid_file" ] && (ps -o"pid" | grep '^ '`get_pid`'$') > /dev/null 2>&1
 }
 
 case "$1" in
