@@ -843,7 +843,7 @@ class _HWHABC(metaclass=abc.ABCMeta):
                             'bit_width': string2int(k.find(
                                 './PROPERTY/[@NAME="BIT_WIDTH"]').get(
                                 'VALUE')),
-                            'description': j.find(
+                            'description': k.find(
                                 './PROPERTY/[@NAME="DESCRIPTION"]').get(
                                     'VALUE'),
                             'access': k.find(
