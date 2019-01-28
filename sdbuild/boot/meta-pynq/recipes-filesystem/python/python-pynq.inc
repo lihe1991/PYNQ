@@ -46,7 +46,7 @@ INITSCRIPT_NAME = "pl_server_init"
 INITSCRIPT_PARAMS = "start 20 S ."
 
 do_compile_prepend() {
-export PYNQ_JUPYTER_NOTEBOOKS=""
+export PYNQ_JUPYTER_NOTEBOOKS="${D}root/notebooks"
 export PYNQ_BUILD_ARCH="${PYNQ_ARCH_${TARGET_ARCH}}"
 export PYNQ_BUILD_ROOT="${STAGING_DIR_TARGET}"
  (cd ${S}/sdbuild/packages/libsds/libcma && CMA_ARCH=${CMA_ARCH_${TARGET_ARCH}} make install DESTDIR=${STAGING_DIR_TARGET})
@@ -68,3 +68,4 @@ do_install_append() {
 SOLIBS = ".so"
 FILES_SOLIBSDEV = ""
 FILES_${PN} += " ${INIT_D_DIR}/pl_server_init /usr/lib/libcma.so"
+FILES_${PN}-notebooks = "/root/notebooks"
