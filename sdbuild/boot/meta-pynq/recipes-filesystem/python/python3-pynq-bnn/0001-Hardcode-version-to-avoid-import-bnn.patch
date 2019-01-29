@@ -1,0 +1,40 @@
+From fc8d8826757e5056eb0d7ed6123fa710bac347c4 Mon Sep 17 00:00:00 2001
+From: Peter Ogden <ogden@xilinx.com>
+Date: Mon, 28 Jan 2019 13:45:41 +0000
+Subject: [PATCH] Hardcode version to avoid import bnn
+
+---
+ setup.py |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/setup.py b/setup.py
+index 63e32d2..8730b31 100644
+--- a/setup.py
++++ b/setup.py
+@@ -31,7 +31,6 @@ from setuptools import setup, find_packages
+ import subprocess
+ import sys
+ import shutil
+-import bnn
+ import os
+ from glob import glob
+ import site 
+@@ -42,7 +41,7 @@ if os.environ['BOARD'] != 'Ultra96' and os.environ['BOARD'] != 'Pynq-Z1' and os.
+ 
+ setup(
+ 	name = "bnn-pynq",
+-	version = bnn.__version__,
++	version = 0.1,
+ 	url = 'kwa/pynq',
+ 	license = 'Apache Software License',
+ 	author = "Nicholas Fraser, Giulio Gambardella, Peter Ogden, Yaman Umuroglu, Christoph Doehring",
+@@ -96,4 +95,4 @@ setup(
+ # copy notebooks
+ if os.path.isdir(os.environ["PYNQ_JUPYTER_NOTEBOOKS"]+"/bnn/"):
+ 	shutil.rmtree(os.environ["PYNQ_JUPYTER_NOTEBOOKS"]+"/bnn/")
+-shutil.copytree("notebooks/",os.environ["PYNQ_JUPYTER_NOTEBOOKS"]+"/bnn/")
+\ No newline at end of file
++shutil.copytree("notebooks/",os.environ["PYNQ_JUPYTER_NOTEBOOKS"]+"/bnn/")
+-- 
+1.7.1
+

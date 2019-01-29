@@ -10,10 +10,10 @@
 ### END INIT INFO
 
 dir=""
-cmd="start_pl_server.py"
+cmd="start-jupyter.sh"
 user=""
 
-name="pl_server"
+name="jupyter-setup"
 pid_file="/var/run/$name.pid"
 stdout_log="/var/log/$name.log"
 stderr_log="/var/log/$name.err"

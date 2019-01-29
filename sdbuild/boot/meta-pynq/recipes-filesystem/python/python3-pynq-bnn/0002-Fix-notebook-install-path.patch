@@ -1,0 +1,24 @@
+From 12df57475a9a44f21af8489393178180c50b3302 Mon Sep 17 00:00:00 2001
+From: Peter Ogden <ogden@xilinx.com>
+Date: Mon, 28 Jan 2019 14:00:36 +0000
+Subject: [PATCH 2/2] Fix notebook install path
+
+---
+ setup.py |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/setup.py b/setup.py
+index 8730b31..e6205bd 100644
+--- a/setup.py
++++ b/setup.py
+@@ -51,7 +51,6 @@ setup(
+ 	package_data = {
+ 	'' : ['*.bit','*.tcl','*.so','*.bin','*.txt', '*.cpp', '*.h', '*.sh'],
+ 	},
+-	data_files = [(os.path.join('/home/xilinx/jupyter_notebooks/bnn',root.replace('notebooks/','')), [os.path.join(root, f) for f in files]) for root, dirs, files in os.walk('notebooks/')],
+ 	description = "Classification using a hardware accelerated neural network with different precision for weights and activation"
+ )
+ 
+-- 
+1.7.1
+

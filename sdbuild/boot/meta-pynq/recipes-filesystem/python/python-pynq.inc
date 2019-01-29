@@ -43,10 +43,11 @@ BBCLASSEXTEND = "native nativesdk"
 inherit update-rc.d
 INITSCRIPT_PACKAGES = "${PN}"
 INITSCRIPT_NAME = "pl_server_init"
-INITSCRIPT_PARAMS = "start 20 S ."
+INITSCRIPT_PARAMS = "start 99 S ."
 
 do_compile_prepend() {
-export PYNQ_JUPYTER_NOTEBOOKS="${D}root/notebooks"
+install -d "${D}/home/root/notebooks"
+export PYNQ_JUPYTER_NOTEBOOKS="${D}/home/root/notebooks"
 export PYNQ_BUILD_ARCH="${PYNQ_ARCH_${TARGET_ARCH}}"
 export PYNQ_BUILD_ROOT="${STAGING_DIR_TARGET}"
  (cd ${S}/sdbuild/packages/libsds/libcma && CMA_ARCH=${CMA_ARCH_${TARGET_ARCH}} make install DESTDIR=${STAGING_DIR_TARGET})
@@ -54,7 +55,8 @@ export PYNQ_BUILD_ROOT="${STAGING_DIR_TARGET}"
 }
 
 do_install_prepend() {
-export PYNQ_JUPYTER_NOTEBOOKS=""
+install -d "${D}/home/root/notebooks"
+export PYNQ_JUPYTER_NOTEBOOKS="${D}/home/root/notebooks"
 export PYNQ_BUILD_ARCH="${PYNQ_ARCH_${TARGET_ARCH}}"
 export PYNQ_BUILD_ROOT="${STAGING_DIR_TARGET}"
 }
@@ -63,9 +65,11 @@ do_install_append() {
  install -d ${D}${INIT_D_DIR}
  install -m 755 ${WORKDIR}/pl_server_init ${D}${INIT_D_DIR}/pl_server_init
  (cd ${S}/sdbuild/packages/libsds/libcma && CMA_ARCH=${CMA_ARCH_${TARGET_ARCH}} make install DESTDIR=${D})
+ rm -rf ${D}/home/root/notebooks_*
 }
 
 SOLIBS = ".so"
 FILES_SOLIBSDEV = ""
 FILES_${PN} += " ${INIT_D_DIR}/pl_server_init /usr/lib/libcma.so"
-FILES_${PN}-notebooks = "/root/notebooks"
+FILES_${PN}-notebooks = "/home/root/notebooks"
+PACKAGES += "${PN}-notebooks"
