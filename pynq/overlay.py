@@ -29,8 +29,10 @@
 
 import collections
 import importlib.util
+import itertools
 import os
 import re
+import struct
 import warnings
 from copy import deepcopy
 from .mmio import MMIO
@@ -39,6 +41,7 @@ from .pl import PL
 from .pl import Bitstream
 from .pl import TCL
 from .pl import HWH
+from .pl import XclBin
 from .pl import get_tcl_name
 from .pl import get_hwh_name
 from .interrupt import Interrupt
@@ -290,7 +293,9 @@ class Overlay(Bitstream):
 
         hwh_path = get_hwh_name(self.bitfile_name)
         tcl_path = get_tcl_name(self.bitfile_name)
-        if os.path.exists(hwh_path):
+        if self.bitfile_name[-6:] == 'xclbin':
+            self.parser = XclBin(self.bitfile_name)
+        elif os.path.exists(hwh_path):
             self.parser = HWH(hwh_path)
         elif os.path.exists(tcl_path):
             self.parser = TCL(tcl_path)
@@ -480,6 +485,53 @@ class RegisterIP(type):
                 _ip_drivers[vlnv.rpartition(':')[0]] = cls
         super().__init__(name, bases, attrs)
 
+_struct_dict = {
+    'int': 'i',
+    'unsigned int': 'I',
+    'float': 'f',
+    'double': 'd',
+    'long': 'l'
+}
+
+XrtArgument = collections.namedtuple('XrtArgument',
+                                     ['name', 'index', 'type', 'mem'])
+
+
+def _create_call(regmap):
+    from inspect import Parameter, Signature
+
+    sorted_regmap = list(regmap.items())
+    sorted_regmap.sort(key=lambda x:x[1]['address_offset'])
+
+    parameters = []
+    ptr_list = []
+    struct_string = "="
+    arg_details = {}
+
+    for k, v in sorted_regmap:
+        curr_offset = struct.calcsize(struct_string)
+        reg_offset = v['address_offset']
+        if reg_offset < curr_offset:
+            raise RuntimeError("Struct string generation failed")
+        elif reg_offset > curr_offset:
+            struct_string += "{}x".format(reg_offset - curr_offset)
+        reg_type = v['type']
+        if "*" in reg_type:
+            struct_string += "Q"
+            ptr_type = True
+        else:
+            struct_string += _struct_dict[v['type']]
+            ptr_type = False
+        if k != 'CTRL':
+            ptr_list.append(ptr_type)
+            parameters.append(Parameter(
+                k, Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=v['type']))
+            arg_details[k] = XrtArgument(
+                k, len(parameters), v['type'],
+                v['memory'] if 'memory' in v else None)
+    signature = Signature(parameters)
+    return signature, struct_string, ptr_list, arg_details
 
 class DefaultIP(metaclass=RegisterIP):
     """Driver for an IP without a more specific driver
@@ -521,6 +573,10 @@ class DefaultIP(metaclass=RegisterIP):
         if 'registers' in description:
             self._registers = description['registers']
             self._register_name = description['fullpath'].rpartition('/')[2]
+            if 'CTRL' in self._registers:
+                self._signature, struct_string, self._ptr_list, self.args = \
+                     _create_call(self._registers)
+                self._call_struct = struct.Struct(struct_string)
         else:
             self._registers = None
 
@@ -536,6 +592,49 @@ class DefaultIP(metaclass=RegisterIP):
                         "register_map only available if the .hwh is provided")
         return self._register_map
 
+    @property
+    def signature(self):
+        """The signature of the `call` method
+
+        """
+        if hasattr(self, "_signature"):
+            return self._signature
+        else:
+            return None
+
+    def call(self, *args, ap_ctrl=1, **kwargs):
+        """Call the accelerator
+
+        This function will configure the accelerator with the provided
+        arguments and start the accelerator. Use the `wait` function to
+        determine when execution has finished. Note that buffers should be
+        flushed prior to starting the accelerator and any result buffers
+        will need to be invalidated afterwards.
+
+        For details on the function's signature use the `signature` property.
+        The type annotations provide the C types that the accelerator
+        operates on. Any pointer types should be passed as `ContiguousArray`
+        objects created from the `pynq.Xlnk` class. Scalars should be passed
+        as a compatible python type as used by the `struct` library.
+
+        """
+        if not self._signature:
+            raise RuntimeError("Only HLS IP can be called with the wrapper")
+        if kwargs:
+            # Resolve any kwargs to make a signle args tuple
+            args = self._signature.bind(*args, **kwargs).args
+        # Resolve and pointers that need .device_address taken
+        args = [a.device_address if p else a
+                for a,p in itertools.zip_longest(args, self._ptr_list)]
+        self.mmio.write(0, self._call_struct.pack(0, *args))
+        self.mmio.write(0, ap_ctrl)
+
+    def wait(self):
+        """Wait until the accelerator has completed
+
+        """
+        while self.mmio.read(0) & 0x4 != 0x4:
+            pass
 
     def read(self, offset=0):
         """Read from the MMIO device

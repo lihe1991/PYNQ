@@ -27,6 +27,7 @@
 #   OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import ctypes
 import os
 import re
 import warnings
@@ -40,6 +41,7 @@ from multiprocessing.connection import Listener
 from multiprocessing.connection import Client
 from .mmio import MMIO
 from .ps import CPU_ARCH_IS_SUPPORTED, CPU_ARCH, ZYNQ_ARCH, ZU_ARCH
+import pynq.xclbin_binding as xclbin
 
 __author__ = "Yun Rock Qu"
 __copyright__ = "Copyright 2016, Xilinx"
@@ -1209,6 +1211,161 @@ else:
                   .format(CPU_ARCH), UserWarning)
 
 
+def _xclxml_to_ip_dict(raw_xml):
+    xml = ElementTree.fromstring(raw_xml)
+    ip_dict = {}
+    for kernel in xml.findall('platform/device/core/kernel'):
+        name = kernel.find('module').attrib['name']
+        slaves = {n.attrib['name']: n for n in kernel.findall('port[@mode="slave"]')}
+        masters = {n.attrib['name']: n for n in kernel.findall('port[@mode="master"]')}
+        addr_size = max([int(n.attrib['range'], 0) for n in slaves.values()])
+        registers = {
+            'CTRL': {
+                'address_offset': 0,
+                'access': 'read-write',
+                'size': 4,
+                'description': 'OpenCL Control Register',
+                'type': 'unsigned int',
+                'fields': {
+                    'AP_START': {
+                        'access': 'read-write',
+                        'bit_offset': 0,
+                        'bit_width': 1,
+                        'description': 'Start the accelerator'
+                    },
+                    'AP_DONE': {
+                        'access': 'read-only',
+                        'bit_offset': 1,
+                        'bit_width': 1,
+                        'description': 'Accelerator has finished - cleared on read'
+                    },
+                    'AP_IDLE': {
+                        'access': 'read-only',
+                        'bit_offset': 2,
+                        'bit_width': 1,
+                        'description': 'Accelerator is idle'
+                    },
+                    'AP_READY': {
+                        'access': 'read-only',
+                        'bit_offset': 3,
+                        'bit_width': 1,
+                        'description': 'Accelerator is ready to start next computation'
+                    },
+                    'AUTO_RESTART': {
+                        'access': 'read-write',
+                        'bit_offset': 7,
+                        'bit_width': 1,
+                        'description': 'Restart the accelerator automatically when finished'
+                    }
+                }
+            }
+        }
+        for arg in kernel.findall('arg'):
+            attrib = arg.attrib
+            registers[attrib['name']] = {
+                'address_offset': int(attrib['offset'], 0),
+                'access': 'read-write;',
+                'size': int(attrib['size'], 0) * 8,
+                'description': 'OpenCL Argument Register',
+                'type': attrib['type']
+            }
+        for instance in kernel.findall('instance'):
+            ip_dict[instance.attrib['name']] = {
+                'phys_addr' : int(instance.find('addrRemap').attrib['base'], 0),
+                'addr_range': addr_size,
+                'type': kernel.attrib['vlnv'],
+                'fullpath': instance.attrib['name'],
+                'registers': registers,
+                'mem_id': None,
+                'state': None,
+                'interrupts': dict(),
+                'gpio': dict()
+            }
+    return ip_dict
+
+
+def _add_argument_memory(ip_dict, ip_data, connections, memories):
+    connection_dict = {
+        (c.m_ip_layout_index, c.arg_index): c.mem_data_index
+        for c in connections
+    }
+
+    for ip_index, ip in enumerate(ip_data):
+        if ip.m_type != 1:
+            continue
+        full_name = ctypes.string_at(ip.m_name).decode()
+        ip_name = full_name.partition(':')[2]
+        if ip_name not in ip_dict:
+            continue
+        dict_entry = ip_dict[ip_name]
+        for i, r in enumerate(sorted(dict_entry['registers'].values(),
+                                     key=lambda x:x['address_offset'])):
+            # Subtract 1 from the register index to account for AP_CTRL
+            if (ip_index, i - 1) in connection_dict:
+                r['memory'] = \
+                    memories[connection_dict[(ip_index, i - 1)]].decode()
+
+
+def _get_buffer_slice(b, offset, length):
+    return b[offset:offset+length]
+
+def _get_object_as_array(obj, number):
+    ctype = type(obj) * number
+    return ctype.from_address(ctypes.addressof(obj))
+
+def _xclbin_to_ip_dict(filename):
+    with open(filename, 'rb') as f:
+        binfile = bytearray(f.read())
+    header = xclbin.axlf.from_buffer(binfile)
+    section_headers = _get_object_as_array(
+        header.m_sections, header.m_header.m_numSections)
+    sections = {
+        s.m_sectionKind: _get_buffer_slice(
+             binfile, s.m_sectionOffset, s.m_sectionSize)
+        for s in section_headers}
+
+    ip_dict =  _xclxml_to_ip_dict(
+        sections[xclbin.AXLF_SECTION_KIND.EMBEDDED_METADATA].decode())
+    ip_layout = xclbin.ip_layout.from_buffer(
+        sections[xclbin.AXLF_SECTION_KIND.IP_LAYOUT])
+    ip_data = _get_object_as_array(ip_layout.m_ip_data[0], ip_layout.m_count)
+    connectivity = xclbin.connectivity.from_buffer(
+        sections[xclbin.AXLF_SECTION_KIND.CONNECTIVITY])
+    connections = _get_object_as_array(connectivity.m_connection[0],
+                                       connectivity.m_count)
+
+    mem_topology = xclbin.mem_topology.from_buffer(
+        sections[xclbin.AXLF_SECTION_KIND.MEM_TOPOLOGY])
+    mem_data = _get_object_as_array(mem_topology.m_mem_data[0],
+                                    mem_topology.m_count)
+    memories = {i: ctypes.string_at(m.m_tag) for i, m in enumerate(mem_data)}
+
+    _add_argument_memory(ip_dict, ip_data, connections, memories)
+
+    return ip_dict
+
+
+def _xclbin_to_bit(binfile):
+    header = xclbin.axlf.from_buffer(bytearray(binfile))
+    section_headers = _get_object_as_array(
+        header.m_sections, header.m_header.m_numSections)
+    sections = {
+        s.m_sectionKind: _get_buffer_slice(
+             binfile, s.m_sectionOffset, s.m_sectionSize)
+        for s in section_headers}
+    return sections[xclbin.AXLF_SECTION_KIND.BITSTREAM]
+
+
+class XclBin:
+    def __init__(self, filename):
+        self.ip_dict = _xclbin_to_ip_dict(filename)
+        self.gpio_dict = {}
+        self.interrupt_controllers = {}
+        self.interrupt_pins = {}
+        self.hierarchy_dict = {}
+        self.clock_dict = {}
+
+
 class PLMeta(type):
     """This method is the meta class for the PL.
 
@@ -1802,7 +1959,7 @@ class Bitstream:
         bitfile_abs = os.path.abspath(bitfile_name)
         bitfile_overlay_abs = os.path.join(PYNQ_PATH,
                                            'overlays',
-                                           bitfile_name.replace('.bit', ''),
+                                           os.path.splitext(bitfile_name)[0],
                                            bitfile_name)
 
         if os.path.isfile(bitfile_name):
@@ -1818,6 +1975,7 @@ class Bitstream:
         self.firmware_path = ''
         self.timestamp = ''
         self.partial = partial
+        self.type = os.path.splitext(bitfile_name)[1][1:]
 
     def convert_bit_to_bin(self):
         """The method to convert a .bit file to .bin file.
@@ -1864,57 +2022,64 @@ class Bitstream:
         Implemented based on: https://blog.aeste.my/?p=2892
 
         """
-        with open(self.bitfile_name, 'rb') as bitf:
-            finished = False
-            offset = 0
-            contents = bitf.read()
-            bit_dict = {}
+        if self.type == "bit":
+            with open(self.bitfile_name, 'rb') as bitf:
+                contents = bitf.read()
+        elif self.type == "xclbin":
+            with open(self.bitfile_name, 'rb') as xclbinf:
+                xcl_contents = xclbinf.read()
+            contents = _xclbin_to_bit(xcl_contents)
 
-            # Strip the (2+n)-byte first field (2-bit length, n-bit data)
-            length = struct.unpack('>h', contents[offset:offset + 2])[0]
-            offset += 2 + length
+        finished = False
+        offset = 0
+        bit_dict = {}
 
-            # Strip a two-byte unknown field (usually 1)
-            offset += 2
+        # Strip the (2+n)-byte first field (2-bit length, n-bit data)
+        length = struct.unpack('>h', contents[offset:offset + 2])[0]
+        offset += 2 + length
 
-            # Strip the remaining headers. 0x65 signals the bit data field
-            while not finished:
-                desc = contents[offset]
-                offset += 1
+        # Strip a two-byte unknown field (usually 1)
+        offset += 2
 
-                if desc != 0x65:
-                    length = struct.unpack('>h',
-                                           contents[offset:offset + 2])[0]
-                    offset += 2
-                    fmt = ">{}s".format(length)
-                    data = struct.unpack(fmt,
-                                         contents[offset:offset + length])[0]
-                    data = data.decode('ascii')[:-1]
-                    offset += length
+        # Strip the remaining headers. 0x65 signals the bit data field
+        while not finished:
+            desc = contents[offset]
+            offset += 1
 
-                if desc == 0x61:
-                    s = data.split(";")
-                    bit_dict['design'] = s[0]
-                    bit_dict['version'] = s[-1]
-                elif desc == 0x62:
-                    bit_dict['part'] = data
-                elif desc == 0x63:
-                    bit_dict['date'] = data
-                elif desc == 0x64:
-                    bit_dict['time'] = data
-                elif desc == 0x65:
-                    finished = True
-                    length = struct.unpack('>i',
-                                           contents[offset:offset + 4])[0]
-                    offset += 4
-                    # Expected length values can be verified in the chip TRM
-                    bit_dict['length'] = str(length)
-                    if length + offset != len(contents):
-                        raise RuntimeError("Invalid length found")
-                    bit_dict['data'] = contents[offset:offset + length]
-                else:
-                    raise RuntimeError("Unknown field: {}".format(hex(desc)))
-            return bit_dict
+            if desc != 0x65:
+                length = struct.unpack('>h',
+                                       contents[offset:offset + 2])[0]
+                offset += 2
+                fmt = ">{}s".format(length)
+                data = struct.unpack(fmt,
+                                     contents[offset:offset + length])[0]
+                data = data.decode('ascii')[:-1]
+                offset += length
+
+            if desc == 0x61:
+                s = data.split(";")
+                bit_dict['design'] = s[0]
+                bit_dict['version'] = s[-1]
+            elif desc == 0x62:
+                bit_dict['part'] = data
+            elif desc == 0x63:
+                bit_dict['date'] = data
+            elif desc == 0x64:
+                bit_dict['time'] = data
+            elif desc == 0x65:
+                finished = True
+                length = struct.unpack('>i',
+                                       contents[offset:offset + 4])[0]
+                offset += 4
+                # Expected length values can be verified in the chip TRM
+                bit_dict['length'] = str(length)
+                if length + offset != len(contents):
+                    raise RuntimeError("Invalid length found")
+                bit_dict['data'] = contents[offset:offset + length]
+            else:
+                raise RuntimeError("Unknown field: {}".format(hex(desc)))
+        return bit_dict
+
 
     def download(self):
         """Download the bitstream onto PL and update PL information.
@@ -1953,7 +2118,7 @@ class Bitstream:
             raise RuntimeError("Could not find programmable device")
 
         self.binfile_name = os.path.basename(
-            self.bitfile_name).replace('.bit', '.bin')
+            self.bitfile_name).replace('.' + self.type, '.bin')
         self.firmware_path = '/lib/firmware/' + self.binfile_name
         self.convert_bit_to_bin()
 
