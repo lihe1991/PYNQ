@@ -28,6 +28,8 @@
 #   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import cffi
+import glob
+import os
 import threading
 import time
 import warnings
@@ -229,6 +231,38 @@ except Exception as e:
     warnings.warn("Could not initialise libsensors library")
     _lib = None
 
+
+class SysFSSensor:
+    def __init__(self, path, unit, name, scale):
+        self._path = path
+        self._unit = unit
+        self.name = name
+        self._scale = scale
+
+    @property
+    def value(self):
+        with open(self._path, "r") as f:
+            raw_value = float(f.read())
+        return raw_value * self._scale
+
+    def __repr__(self):
+        return "Sensor {{name={}, value={}{}}}".format(
+            self.name, self.value, self._unit)
+
+class DerivedPowerSensor:
+    def __init__(self, name, voltage, current):
+        self.voltage_sensor = voltage
+        self.current_sensor = current
+        self.name = name
+
+    @property
+    def value(self):
+        return self.voltage_sensor.value * self.current_sensor.value
+
+    def __repr__(self):
+        return "Sensor {{name={}, value={}W}}".format(
+            self.name, self.value)
+
 class Sensor:
     """Interacts with a sensor exposed by libsensors
 
@@ -317,6 +351,58 @@ class Rail:
         if self.power:
             args.append("power=" + repr(self.power))
         return "Rail {{{}}}".format(', '.join(args))
+
+class XrtRail:
+    def __init__(self, name, base_file):
+       self.power = None 
+       self.name = name
+       if os.path.isfile(base_file):
+          self.voltage = SysFSSensor(base_file, "V", name, 0.001)
+          self.current = None
+       else:
+          if os.path.isfile(base_file + "_vol"):
+             self.voltage = SysFSSensor(base_file + "_vol", "V", name + "_vol", 0.001)
+          else:
+             self.voltage = None
+          if os.path.isfile(base_file + "_curr"):
+             self.current = SysFSSensor(base_file + "_curr", "A", name + "_curr", 0.001)
+          else:
+             self.current = None
+
+          if self.voltage and self.current:
+             self.power = DerivedPowerSensor(name + "_power",
+                 self.voltage, self.current)
+
+    def __repr__(self):
+        args = ["name=" + self.name]
+        if self.voltage:
+            args.append("voltage=" + repr(self.voltage))
+        if self.current:
+            args.append("current=" + repr(self.current))
+        if self.power:
+            args.append("power=" + repr(self.power))
+        return "XrtRail {{{}}}".format(', '.join(args))
+
+
+def get_xrt_sysfs_rails(device=None):
+    if device is None:
+        from .memory import Device
+        device = Device.default_device
+    if hasattr(device, "sysfs_path") and device.sysfs_path:
+        base_dir = device.sysfs_path
+    else:
+        return {} 
+
+    rail_names = ["0v85", "12v_aux", "12v_pex", "12v_sw", "1v8", "3v3_aux",
+                  "3v3_pex", "mgt0v9avcc", "mgtavtt", "sys_5v5", "vccint" ]
+
+    rails = {} 
+    mgmt_dir = glob.glob(base_dir + "/xmc*")[0]
+    for n in rail_names:
+        rails[n] = XrtRail(n, mgmt_dir + "/xmc_" + n)
+
+    return rails
+
 
 def _enumerate_sensors(config_file=None):
     if _lib is None:
