@@ -12,7 +12,7 @@ cd /home/xilinx
 mkdir -p jupyter_notebooks
 
 cd pynq_git
-python3.6 -m pip install . --upgrade
+python3.6 -m pip install . --upgrade --no-index
 sdbuild/packages/pynq/get_revision.sh > /home/xilinx/REVISION
 cd ..
 
