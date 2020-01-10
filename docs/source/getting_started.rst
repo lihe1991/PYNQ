@@ -28,6 +28,12 @@ If you have another Zynq board see the following guide:
     
     getting_started/pynq_image.rst
 
+.. toctree::
+    :maxdepth: 1
+    :hidden: 
+    
+    getting_started/alveo_getting_started.rst
+
 .. _connecting-to-jupyter-notebook:
 
 Connecting to Jupyter Notebook
