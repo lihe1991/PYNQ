@@ -792,6 +792,12 @@ class DefaultIP(metaclass=RegisterIP):
             completes
 
         """
+        if not self._signature:
+            raise RuntimeError("Only HLS IP can be called with the wrapper")
+        if kwargs:
+            # Resolve any kwargs to make a single args tuple
+            args = self._signature.bind(*args, **kwargs).args
+
         args = [a.device_address if p else a for a, p in zip(args, self._ptr_list)]
         arg_data = self._call_struct.pack(0, *args)
         bo = self.device.get_exec_bo()
